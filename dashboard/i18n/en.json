@@ -1,0 +1,46 @@
+{
+  "title": "CRYPTO MONITOR",
+  "live": "LIVE",
+  "connecting": "Connecting...",
+  "connected": "Connected",
+  "disconnected": "Disconnected",
+  "symbols": {
+    "label": "Pairs"
+  },
+  "price": {
+    "current": "Current Price",
+    "vwap": "VWAP",
+    "sma20": "SMA-20",
+    "high": "High 1m",
+    "low": "Low 1m",
+    "lastUpdate": "Last update"
+  },
+  "stats": {
+    "volume": "Volume (1m)",
+    "trades": "Trades (1m)",
+    "high": "High (1m)",
+    "low": "Low (1m)",
+    "change1m": "Change 1m",
+    "change5m": "Change 5m"
+  },
+  "chart": {
+    "price": "Price History",
+    "volume": "Volume per Symbol (1m)",
+    "priceLabel": "Price",
+    "smaLabel": "SMA20"
+  },
+  "anomalies": {
+    "title": "Anomaly Feed",
+    "empty": "No anomalies detected yet",
+    "zscore": "z-score",
+    "whale": "Whale trade"
+  },
+  "footer": {
+    "module": "Real-Time Engineering - M1 EFREI",
+    "authors": "Adam Beloucif, Emilien Morice"
+  },
+  "lang": {
+    "fr": "FR",
+    "en": "EN"
+  }
+}

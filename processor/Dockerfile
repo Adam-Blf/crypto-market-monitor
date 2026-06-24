@@ -11,4 +11,6 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 COPY --from=builder /app/dist ./dist
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
 CMD ["node", "dist/index.js"]
