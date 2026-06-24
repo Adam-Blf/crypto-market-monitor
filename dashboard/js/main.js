@@ -337,6 +337,70 @@ async function fetchHistoryAndRefreshChart(symbol) {
 }
 
 /* ============================================================
+   DEMO MODE - activates after 3s if backend is unreachable
+   ============================================================ */
+const DEMO_BASE = { 'BTC-USDT': 67432.18, 'ETH-USDT': 3521.44, 'BTC-USD': 67389.92 };
+
+function buildMockMetrics(symbol, prevPrice) {
+  const base  = DEMO_BASE[symbol] || 50000;
+  const price = (prevPrice || base) + (Math.random() - 0.5) * 30;
+  return {
+    symbol,
+    timestamp:    Date.now(),
+    currentPrice: price,
+    vwap:         base * (1 + (Math.random() - 0.5) * 0.001),
+    sma20:        base * (1 + (Math.random() - 0.5) * 0.002),
+    priceChange1m: (Math.random() - 0.48) * 0.8,
+    priceChange5m: (Math.random() - 0.45) * 1.5,
+    volumeTotal1m: Math.floor(Math.random() * 5_000_000 + 1_000_000),
+    tradeCount1m:  Math.floor(Math.random() * 400 + 100),
+    highPrice1m:   base * 1.003,
+    lowPrice1m:    base * 0.997,
+    anomaly: false,
+    anomalyScore: 0.5,
+  };
+}
+
+function injectDemoData() {
+  const symbols = ['BTC-USDT', 'ETH-USDT', 'BTC-USD'];
+  symbols.forEach(sym => {
+    for (let i = 0; i < 60; i++) {
+      const m = buildMockMetrics(sym, state.metrics[sym]?.currentPrice);
+      pushToHistory(sym, m);
+      state.metrics[sym] = m;
+    }
+    if (sym === state.currentSymbol) renderMetrics(state.metrics[sym]);
+  });
+  refreshPriceChart(state.currentSymbol);
+  refreshVolumeChart();
+
+  setTimeout(() => {
+    addAnomalyToFeed({
+      symbol: 'BTC-USDT', timestamp: Date.now() - 12000,
+      currentPrice: 68105.77, anomalyScore: 3.12,
+    });
+  }, 800);
+
+  const badge = document.querySelector('.header-badge');
+  if (badge) {
+    badge.removeAttribute('data-i18n');
+    badge.textContent = 'DEMO';
+    badge.style.cssText = 'background:rgba(245,158,11,0.15);color:#F59E0B;border-color:rgba(245,158,11,0.3);animation:none;';
+  }
+  document.getElementById('footerStats').textContent = 'Mode demo - donnees simulees';
+
+  setInterval(() => {
+    const sym = symbols[Math.floor(Math.random() * symbols.length)];
+    const m   = buildMockMetrics(sym, state.metrics[sym]?.currentPrice);
+    state.msgCount++;
+    pushToHistory(sym, m);
+    renderMetrics(m);
+    if (sym === state.currentSymbol) refreshPriceChart(sym);
+    refreshVolumeChart();
+  }, 800);
+}
+
+/* ============================================================
    SOCKET.IO
    ============================================================ */
 function connectSocket() {
@@ -344,10 +408,16 @@ function connectSocket() {
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     transports: ['websocket', 'polling'],
+    timeout: 3000,
   });
   state.socket = socket;
 
+  const demoTimer = setTimeout(() => {
+    if (!socket.connected) injectDemoData();
+  }, 3000);
+
   socket.on('connect', () => {
+    clearTimeout(demoTimer);
     setConnectionStatus(true);
     socket.emit('subscribe:symbol', state.currentSymbol);
     fetchHistoryAndRefreshChart(state.currentSymbol);
