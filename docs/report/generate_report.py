@@ -1,7 +1,6 @@
 ﻿"""
-Crypto Market Monitor - Rapport Technique PDF
-M1 Data Engineering & IA - EFREI Paris - Module Real-Time Engineering 2025-2026
-Adam Beloucif, Emilien Morice
+Crypto Market Monitor - Rapport Technique PDF v2
+EFREI branding officiel : navy #163767, rose #ff43b8, bleu #3653a0, Gilroy -> Helvetica
 """
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -9,32 +8,35 @@ from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    HRFlowable, PageBreak
+    HRFlowable, PageBreak, KeepTogether
 )
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY, TA_RIGHT
 import os
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "crypto-market-monitor-rapport-technique.pdf")
 
-# Palette
-NAVY   = colors.HexColor("#0A0E1A")
-AMBER  = colors.HexColor("#F59E0B")
-PURPLE = colors.HexColor("#8B5CF6")
-WHITE  = colors.HexColor("#F8FAFC")
-MUTED  = colors.HexColor("#94A3B8")
-GREEN  = colors.HexColor("#10B981")
-CARD   = colors.HexColor("#111827")
-DARK2  = colors.HexColor("#1E293B")
+# EFREI palette
+BG      = colors.HexColor("#0B1B34")
+NAVY    = colors.HexColor("#163767")
+ROSE    = colors.HexColor("#FF43B8")
+BLUE    = colors.HexColor("#3653A0")
+BLUE2   = colors.HexColor("#337AB6")
+PURPLE  = colors.HexColor("#95569E")
+WHITE   = colors.HexColor("#FFFFFF")
+MUTED   = colors.HexColor("#94A3B8")
+GREEN   = colors.HexColor("#10B981")
+CARD    = colors.HexColor("#163767")
+CARD2   = colors.HexColor("#1E2E4A")
+DARK    = colors.HexColor("#0D1F3C")
+RED_LT  = colors.HexColor("#F87171")
 
 PAGE_W, PAGE_H = A4
 
 doc = SimpleDocTemplate(
     OUT,
     pagesize=A4,
-    leftMargin=2*cm,
-    rightMargin=2*cm,
-    topMargin=2.5*cm,
-    bottomMargin=2*cm,
+    leftMargin=1.8*cm, rightMargin=1.8*cm,
+    topMargin=2.2*cm, bottomMargin=1.8*cm,
     title="Rapport Technique - Crypto Market Monitor",
     author="Adam Beloucif, Emilien Morice",
     subject="M1 Real-Time Engineering - EFREI Paris 2025-2026",
@@ -43,393 +45,351 @@ doc = SimpleDocTemplate(
 styles = getSampleStyleSheet()
 
 def sty(name, **kwargs):
-    base = ParagraphStyle(name, parent=styles['Normal'], **kwargs)
-    return base
+    return ParagraphStyle(name, parent=styles["Normal"], **kwargs)
 
-ST_TITLE    = sty("title",    fontSize=28, textColor=AMBER, alignment=TA_CENTER,
-                  spaceAfter=6, leading=32, fontName="Helvetica-Bold")
-ST_SUBTITLE = sty("subtitle", fontSize=13, textColor=MUTED, alignment=TA_CENTER,
-                  spaceAfter=4, leading=17)
-ST_H1       = sty("h1",       fontSize=18, textColor=AMBER, spaceBefore=14,
-                  spaceAfter=6, leading=22, fontName="Helvetica-Bold")
-ST_H2       = sty("h2",       fontSize=13, textColor=WHITE, spaceBefore=10,
-                  spaceAfter=4, leading=17, fontName="Helvetica-Bold")
-ST_BODY     = sty("body",     fontSize=10, textColor=WHITE, spaceAfter=4,
-                  leading=15, alignment=TA_JUSTIFY)
-ST_BODY_L   = sty("body_left",fontSize=10, textColor=WHITE, spaceAfter=4, leading=15)
-ST_BULLET   = sty("bullet",   fontSize=10, textColor=WHITE, spaceAfter=2,
-                  leading=14, leftIndent=12, bulletIndent=0)
-ST_CODE     = sty("code",     fontSize=9,  textColor=GREEN, fontName="Courier",
-                  spaceAfter=4, leading=13, backColor=CARD, leftIndent=8)
-ST_CAPTION  = sty("caption",  fontSize=9,  textColor=MUTED, alignment=TA_CENTER,
-                  spaceAfter=6, leading=12)
-ST_MUTED    = sty("muted",    fontSize=9,  textColor=MUTED, spaceAfter=3, leading=13)
-ST_AMBER    = sty("amber",    fontSize=11, textColor=AMBER, fontName="Helvetica-Bold",
-                  spaceBefore=6, spaceAfter=3, leading=15)
+ST_COVER_TITLE = sty("ct", fontSize=32, textColor=WHITE, alignment=TA_LEFT,
+                     spaceAfter=4, leading=38, fontName="Helvetica-Bold")
+ST_COVER_SUB   = sty("cs", fontSize=14, textColor=MUTED, alignment=TA_LEFT,
+                     spaceAfter=6, leading=20)
+ST_H1   = sty("h1", fontSize=20, textColor=WHITE, spaceBefore=16, spaceAfter=4,
+              leading=26, fontName="Helvetica-Bold")
+ST_SECTION_LABEL = sty("sl", fontSize=9, textColor=ROSE, spaceBefore=2, spaceAfter=2,
+                        leading=12, fontName="Helvetica-Bold")
+ST_H2   = sty("h2", fontSize=13, textColor=WHITE, spaceBefore=10, spaceAfter=3,
+              leading=17, fontName="Helvetica-Bold")
+ST_BODY = sty("body", fontSize=10, textColor=MUTED, spaceAfter=4,
+              leading=15, alignment=TA_JUSTIFY)
+ST_BODY_L = sty("bodyl", fontSize=10, textColor=MUTED, spaceAfter=4, leading=15)
+ST_BULLET = sty("bul", fontSize=10, textColor=WHITE, spaceAfter=2,
+                leading=14, leftIndent=10)
+ST_CODE = sty("code", fontSize=9, textColor=GREEN, fontName="Courier",
+              spaceAfter=3, leading=13, backColor=DARK, leftIndent=8)
+ST_CAPTION = sty("cap", fontSize=9, textColor=MUTED, alignment=TA_CENTER,
+                 spaceAfter=6, leading=12)
+ST_ROSE = sty("rose", fontSize=11, textColor=ROSE, fontName="Helvetica-Bold",
+              spaceBefore=6, spaceAfter=2, leading=15)
+ST_NUM  = sty("num", fontSize=28, textColor=ROSE, fontName="Helvetica-Bold",
+              alignment=TA_CENTER, spaceAfter=2, leading=32)
 
-def hr():
-    return HRFlowable(width="100%", thickness=1, color=AMBER, spaceAfter=8, spaceBefore=4)
+def hr(color=ROSE):
+    return HRFlowable(width="100%", thickness=1.5, color=color, spaceAfter=8, spaceBefore=4)
 
-def bullet(text):
-    return Paragraph(f"  - {text}", ST_BULLET)
+def sp(n=6): return Spacer(1, n)
+def h1(text): return Paragraph(text, ST_H1)
+def h2(text): return Paragraph(text, ST_H2)
+def body(text): return Paragraph(text, ST_BODY)
+def bul(text): return Paragraph(f"  - {text}", ST_BULLET)
+def code(text): return Paragraph(text, ST_CODE)
+def rose_label(text): return Paragraph(text.upper(), ST_SECTION_LABEL)
 
-def h1(text):
-    return Paragraph(text, ST_H1)
-
-def h2(text):
-    return Paragraph(text, ST_H2)
-
-def body(text):
-    return Paragraph(text, ST_BODY)
-
-def body_l(text):
-    return Paragraph(text, ST_BODY_L)
-
-def sp(n=6):
-    return Spacer(1, n)
+def table(data, col_widths, header_color=ROSE):
+    t = Table(data, colWidths=col_widths)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), NAVY),
+        ("TEXTCOLOR",  (0,0), (-1,0), header_color),
+        ("FONTNAME",   (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE",   (0,0), (-1,-1), 9),
+        ("PADDING",    (0,0), (-1,-1), 6),
+        ("GRID",       (0,0), (-1,-1), 0.3, CARD2),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [DARK, CARD]),
+        ("TEXTCOLOR",  (0,1), (-1,-1), WHITE),
+        ("LEADING",    (0,0), (-1,-1), 13),
+    ]))
+    return t
 
 story = []
 
-# ======================================================
-# Couverture
-# ======================================================
-story += [
-    sp(60),
-    Paragraph("CRYPTO MARKET MONITOR", ST_TITLE),
-    hr(),
-    Paragraph("Rapport Technique", ST_SUBTITLE),
-    sp(4),
-    Paragraph("Systeme de surveillance des marches crypto en temps reel", ST_SUBTITLE),
-    sp(30),
-]
+# ══════════════════════════════════════════════════════
+# PAGE DE COUVERTURE
+# ══════════════════════════════════════════════════════
+story += [sp(40)]
 
-meta_data = [
-    ["Auteurs",    "Adam Beloucif, Emilien Morice"],
-    ["Formation",  "M1 Data Engineering & IA - EFREI Paris"],
-    ["Module",     "Real-Time Engineering (S9 - 2025-2026)"],
-    ["Date",       "Juin 2026"],
-    ["Note",       "Projet realise a 2 personnes (consigne prevue pour 4)"],
+# Rose accent line (simulate via table)
+cov_top = Table([[""]],colWidths=[17*cm], rowHeights=[0.12*cm])
+cov_top.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),ROSE),("LINEBELOW",(0,0),(-1,-1),0,ROSE)]))
+story.append(cov_top)
+story += [sp(20)]
+
+story.append(Paragraph("CRYPTO MARKET MONITOR", ST_COVER_TITLE))
+story.append(Paragraph("Rapport Technique", ST_COVER_SUB))
+story += [sp(8)]
+cov_div = Table([[""]],colWidths=[5*cm], rowHeights=[0.1*cm])
+cov_div.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),ROSE)]))
+story.append(cov_div)
+story += [sp(8)]
+story.append(Paragraph("Pipeline Kafka  -  Analytics temps reel  -  Dashboard live", ST_COVER_SUB))
+story += [sp(40)]
+
+meta = [
+    ["AUTEURS",   "Adam Beloucif, Emilien Morice"],
+    ["FORMATION", "M1 Data Engineering & IA - EFREI Paris"],
+    ["MODULE",    "Real-Time Engineering  -  S9 2025-2026"],
+    ["DATE",      "Juin 2026"],
+    ["CONTEXTE",  "Projet realise a 2 personnes (consigne prevue pour 4)"],
 ]
-meta_table = Table(meta_data, colWidths=[4*cm, 12*cm])
-meta_table.setStyle(TableStyle([
-    ("BACKGROUND", (0,0), (-1,-1), CARD),
-    ("TEXTCOLOR",  (0,0), (0,-1), AMBER),
-    ("TEXTCOLOR",  (1,0), (1,-1), WHITE),
-    ("FONTNAME",   (0,0), (0,-1), "Helvetica-Bold"),
-    ("FONTSIZE",   (0,0), (-1,-1), 10),
-    ("PADDING",    (0,0), (-1,-1), 7),
-    ("GRID",       (0,0), (-1,-1), 0.3, DARK2),
-    ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, DARK2]),
+mt = Table(meta, colWidths=[3.5*cm, 13*cm])
+mt.setStyle(TableStyle([
+    ("BACKGROUND",(0,0),(-1,-1),DARK),
+    ("TEXTCOLOR", (0,0),(0,-1),ROSE),
+    ("TEXTCOLOR", (1,0),(1,-1),WHITE),
+    ("FONTNAME",  (0,0),(0,-1),"Helvetica-Bold"),
+    ("FONTSIZE",  (0,0),(-1,-1),9),
+    ("PADDING",   (0,0),(-1,-1),7),
+    ("GRID",      (0,0),(-1,-1),0.3,CARD2),
+    ("ROWBACKGROUNDS",(0,0),(-1,-1),[DARK,CARD]),
 ]))
-story += [meta_table, sp(20)]
+story.append(mt)
 story.append(PageBreak())
 
-# ======================================================
-# 1. Introduction
-# ======================================================
-story += [h1("1. Introduction"), hr()]
+# ══════════════════════════════════════════════════════
+# 1. INTRODUCTION
+# ══════════════════════════════════════════════════════
+story += [rose_label("introduction"), h1("1. Introduction"), hr()]
 story += [
-    body("Ce rapport presente l'architecture, les choix techniques et les resultats du projet Crypto Market Monitor, "
-         "realise dans le cadre du module Real-Time Engineering du M1 Data Engineering et IA de l'EFREI Paris (2025-2026)."),
+    body("Ce rapport presente l'architecture, les choix techniques et les resultats du projet "
+         "Crypto Market Monitor, realise dans le cadre du module Real-Time Engineering du M1 Data "
+         "Engineering et IA de l'EFREI Paris (2025-2026)."),
     sp(),
-    body("L'objectif est de construire un pipeline de streaming bout-en-bout qui ingere des transactions crypto en direct "
-         "depuis les flux WebSocket de Binance et Coinbase, les traite via Apache Kafka, calcule des metriques analytiques "
-         "en fenetre glissante (VWAP, SMA-20, detection d'anomalies par z-score) et pousse les resultats vers un dashboard "
-         "live via Socket.IO."),
-    sp(),
-    body("Le projet a ete realise en binome alors que la consigne prevoyait une equipe de quatre personnes."),
+    body("L'objectif : construire un pipeline de streaming bout-en-bout qui ingere des transactions "
+         "crypto en direct depuis Binance et Coinbase, les traite via Apache Kafka, calcule des "
+         "metriques analytiques en fenetre glissante (VWAP, SMA-20, z-score) et pousse les resultats "
+         "vers un dashboard live via Socket.IO."),
     sp(12),
 ]
 
-# ======================================================
-# 2. Architecture
-# ======================================================
-story += [h1("2. Architecture du systeme"), hr(),
-    body("Le systeme suit un pattern pipeline lineaire : collecte -> streaming -> traitement -> diffusion. "
-         "Chaque etape est isolee dans un service independant, communiquant exclusivement via Kafka ou Socket.IO."),
-    sp(6),
-    h2("2.1 Composants"),
+# KPIs
+kpi_data = [
+    ["100M+\ntransactions/jour\n(Binance)", "< 1s\nlatence cible\ndetection anomalie", "3\nsources\nBinance + Coinbase", "4\nservices\nindependants"],
+]
+kpi_t = Table(kpi_data, colWidths=[4*cm]*4)
+kpi_t.setStyle(TableStyle([
+    ("BACKGROUND",(0,0),(-1,-1),DARK),
+    ("TEXTCOLOR", (0,0),(-1,-1),WHITE),
+    ("FONTNAME",  (0,0),(-1,-1),"Helvetica-Bold"),
+    ("FONTSIZE",  (0,0),(-1,-1),10),
+    ("ALIGN",     (0,0),(-1,-1),"CENTER"),
+    ("VALIGN",    (0,0),(-1,-1),"MIDDLE"),
+    ("PADDING",   (0,0),(-1,-1),10),
+    ("LINEABOVE", (0,0),(-1,0),2,ROSE),
+    ("GRID",      (0,0),(-1,-1),0.3,CARD2),
+]))
+story += [kpi_t, sp(12), PageBreak()]
+
+# ══════════════════════════════════════════════════════
+# 2. ARCHITECTURE
+# ══════════════════════════════════════════════════════
+story += [rose_label("architecture"), h1("2. Architecture du systeme"), hr()]
+story += [
+    body("Le systeme suit un pipeline lineaire : collecte WebSocket -> Kafka -> traitement "
+         "analytique -> API REST/WebSocket -> dashboard. Chaque service est isole dans un "
+         "conteneur Docker independant."),
+    sp(8),
 ]
 
-comps = [
+comp_data = [
     ["Service", "Role", "Technologies"],
-    ["Ingester",   "Clients WebSocket Binance + Coinbase, normalisation, production Kafka", "Node.js, TypeScript, ws, kafkajs"],
-    ["Kafka",      "Tampon de decoupling, tolerance aux pannes, multi-consommateurs",      "Apache Kafka 3.7 KRaft"],
-    ["Processor",  "Consomme les transactions, calcule VWAP SMA z-score",                  "Node.js, TypeScript, kafkajs"],
-    ["API",        "Agregation, endpoints REST, push WebSocket clients",                    "Express, Socket.IO, helmet"],
-    ["Dashboard",  "Graphiques prix/volume, flux anomalies, i18n FR/EN",                  "HTML, CSS, JS, Chart.js 4"],
+    ["Ingester",   "Clients WS Binance + Coinbase, normalisation, production Kafka", "Node.js, TypeScript, ws, kafkajs"],
+    ["Kafka",      "Tampon decoupling, tolerance pannes, multi-consommateurs",        "Apache Kafka 3.7 KRaft"],
+    ["Processor",  "Consomme trades, calcule VWAP SMA-20 z-score variance",          "Node.js, TypeScript, kafkajs"],
+    ["API",        "Agregation, endpoints REST, push WebSocket live",                 "Express, Socket.IO, helmet"],
+    ["Dashboard",  "Graphiques Chart.js, flux anomalies, i18n FR/EN",                "HTML, CSS, JS, Chart.js 4"],
 ]
-comp_table = Table(comps, colWidths=[3*cm, 8.5*cm, 5*cm])
-comp_table.setStyle(TableStyle([
-    ("BACKGROUND", (0,0), (-1,0), DARK2),
-    ("TEXTCOLOR",  (0,0), (-1,0), AMBER),
-    ("FONTNAME",   (0,0), (-1,0), "Helvetica-Bold"),
-    ("BACKGROUND", (0,1), (-1,-1), CARD),
-    ("TEXTCOLOR",  (0,1), (-1,-1), WHITE),
-    ("FONTSIZE",   (0,0), (-1,-1), 9),
-    ("PADDING",    (0,0), (-1,-1), 6),
-    ("GRID",       (0,0), (-1,-1), 0.3, DARK2),
-    ("ROWBACKGROUNDS", (0,1), (-1,-1), [CARD, DARK2]),
-]))
-story += [comp_table, sp(10)]
+story += [table(comp_data, [3*cm, 8.5*cm, 5*cm]), sp(10)]
 
 story += [
-    h2("2.2 Flux de donnees"),
-    body("Sources WebSocket -> Ingester (normalisation) -> Kafka topic crypto-trades -> "
-         "Processor (VWAP, SMA-20, z-score) -> Kafka topic crypto-metrics -> "
-         "API Server -> Socket.IO -> Dashboard (push temps reel)."),
-    sp(),
-    body("Le decoupling par Kafka permet aux producteurs et consommateurs de fonctionner a des debits differents "
-         "sans perte de donnees. La retention est configuree a 1 heure par defaut. Le partitionnement se fait "
-         "par symbole (cle = symbole), garantissant l'ordre des messages par paire de trading."),
-    sp(10),
-]
-story.append(PageBreak())
-
-# ======================================================
-# 3. Apache Kafka KRaft
-# ======================================================
-story += [h1("3. Apache Kafka - Mode KRaft"), hr(),
-    body("Le projet utilise Kafka 3.7 en mode KRaft, qui elimine la dependance a Zookeeper. "
-         "Les metadonnees du cluster sont gerees en interne via le protocole Raft, ce qui simplifie "
-         "le deploiement (1 conteneur + 1 volume) et reduit la surface d'attaque."),
-    sp(),
-    h2("3.1 Image Docker"),
-    Paragraph("bitnami/kafka:3.7  (KRaft pre-configure, variable KAFKA_CFG_PROCESS_ROLES=broker,controller)", ST_CODE),
-    sp(),
-    h2("3.2 Topics"),
+    h2("Flux de donnees"),
+    code("WS Sources -> Ingester -> Kafka [crypto-trades] -> Processor -> Kafka [crypto-metrics] -> API -> Socket.IO -> Dashboard"),
+    sp(4),
+    body("Le partitionnement par symbole (cle = BTC-USDT, ETH-USDT, BTC-USD) garantit l'ordre "
+         "des messages par paire. La retention est de 1 heure. En cas de crash du processor, "
+         "il relira le topic depuis son dernier offset consomme."),
+    sp(12), PageBreak(),
 ]
 
-topics = [
+# ══════════════════════════════════════════════════════
+# 3. KAFKA
+# ══════════════════════════════════════════════════════
+story += [rose_label("apache kafka"), h1("3. Apache Kafka - Mode KRaft"), hr()]
+story += [
+    body("Kafka 3.7 en mode KRaft elimine Zookeeper. Les metadonnees du cluster sont gerees "
+         "via Raft interne, ce qui simplifie le deploiement (1 conteneur + 1 volume) et "
+         "reduit la surface d'attaque operationnelle."),
+    sp(6),
+]
+
+topic_data = [
     ["Topic", "Description", "Partitions", "Retention"],
     ["crypto-trades",  "Transactions brutes normalisees (interface Trade)",   "3", "1h"],
     ["crypto-metrics", "Metriques calculees par symbole (VWAP, SMA, etc.)",  "3", "1h"],
 ]
-t_table = Table(topics, colWidths=[4*cm, 8.5*cm, 2.5*cm, 2*cm])
-t_table.setStyle(TableStyle([
-    ("BACKGROUND", (0,0), (-1,0), DARK2),
-    ("TEXTCOLOR",  (0,0), (-1,0), AMBER),
-    ("FONTNAME",   (0,0), (-1,0), "Helvetica-Bold"),
-    ("BACKGROUND", (0,1), (-1,-1), CARD),
-    ("TEXTCOLOR",  (0,1), (-1,-1), WHITE),
-    ("FONTSIZE",   (0,0), (-1,-1), 9),
-    ("PADDING",    (0,0), (-1,-1), 6),
-    ("GRID",       (0,0), (-1,-1), 0.3, DARK2),
-    ("ROWBACKGROUNDS", (0,1), (-1,-1), [CARD, DARK2]),
-]))
-story += [t_table, sp(10)]
-
-# ======================================================
-# 4. Services
-# ======================================================
-story += [h1("4. Services Node.js TypeScript"), hr()]
-
+story += [table(topic_data, [4.5*cm, 8*cm, 2.5*cm, 1.5*cm]), sp(6)]
 story += [
-    h2("4.1 Ingester"),
-    body("L'ingester maintient des connexions WebSocket persistantes vers Binance et Coinbase. "
-         "Chaque message entrant est deserialise, normalise vers l'interface Trade, puis publie "
-         "sur le topic crypto-trades avec comme cle de partition le symbole."),
-    sp(4),
-    bullet("Binance : stream combine BTC/USDT + ETH/USDT via wss://stream.binance.com:9443/stream"),
-    bullet("Coinbase : BTC-USD via wss://advanced-trade-ws.coinbase.com"),
-    bullet("Reconnexion auto : backoff exponentiel, max 10 tentatives, delai max 30 secondes"),
-    bullet("Arret propre SIGTERM/SIGINT avec vidage du buffer Kafka"),
-    sp(8),
-    h2("4.2 Processor"),
-    body("Le processor consomme le topic crypto-trades et maintient un buffer circulaire en memoire "
-         "(max 1000 trades/symbole, eviction TTL 10 minutes) par symbole. A chaque nouveau trade, "
-         "il recalcule les metriques de la fenetre courante et publie le resultat sur crypto-metrics."),
-    sp(6),
+    bul("Image Docker : bitnami/kafka:3.7 (KRaft pre-configure)"),
+    bul("Partition key = symbole -> ordre des messages garanti par paire"),
+    bul("Reconnexion Kafka client : backoff exponentiel, max 10 tentatives"),
+    sp(12), PageBreak(),
 ]
 
-metrics = [
+# ══════════════════════════════════════════════════════
+# 4. SERVICES
+# ══════════════════════════════════════════════════════
+story += [rose_label("services node.js"), h1("4. Services Node.js TypeScript"), hr()]
+
+story += [h2("4.1 Ingester"), sp(3)]
+story += [
+    body("L'ingester maintient des connexions WebSocket persistantes et normalise chaque "
+         "message vers une interface Trade commune avant de le produire sur Kafka."),
+    bul("Binance : stream combine BTC/USDT + ETH/USDT"),
+    bul("Coinbase : BTC-USD via Advanced Trade WebSocket"),
+    bul("Reconnexion auto : backoff exponentiel, max 10 tentatives, delai max 30s"),
+    bul("Arret propre SIGTERM/SIGINT avec vidage du buffer Kafka"),
+    sp(8),
+]
+
+story += [h2("4.2 Processor - Analytique"), sp(3)]
+
+metrics_data = [
     ["Metrique", "Formule", "Fenetre", "Objectif"],
-    ["VWAP",       "sum(prix x qte) / sum(qte)",       "1 minute",  "Prix moyen pondere par volume"],
-    ["SMA-20",     "moyenne des 20 derniers prix",      "20 trades", "Lissage de la tendance"],
-    ["Z-Score",    "(valeur - mu) / sigma",             "1 minute",  "Detection d'anomalie (seuil 2.5)"],
-    ["Var. 1min",  "(prix - prix_0) / prix_0",          "1 minute",  "Performance instantanee"],
-    ["Var. 5min",  "(prix - prix_0) / prix_0",          "5 minutes", "Performance moyen terme"],
-    ["High/Low",   "max / min des prix",                "1 minute",  "Amplitude de la bougie"],
+    ["VWAP",       "sum(prix * qte) / sum(qte)",       "1 min",    "Prix moyen pondere par volume"],
+    ["SMA-20",     "moyenne des 20 derniers prix",      "20 trades","Lissage de la tendance"],
+    ["Z-Score",    "(valeur - mu) / sigma",             "1 min",    "Anomalie si > 2.5 sigma"],
+    ["Var. 1min",  "(prix - prix0) / prix0",            "1 min",    "Performance instantanee"],
+    ["Var. 5min",  "(prix - prix0) / prix0",            "5 min",    "Performance moyen terme"],
+    ["High/Low",   "max / min des prix",                "1 min",    "Amplitude de la bougie"],
 ]
-m_table = Table(metrics, colWidths=[2.5*cm, 5*cm, 2.5*cm, 6.5*cm])
-m_table.setStyle(TableStyle([
-    ("BACKGROUND", (0,0), (-1,0), DARK2),
-    ("TEXTCOLOR",  (0,0), (-1,0), AMBER),
-    ("FONTNAME",   (0,0), (-1,0), "Helvetica-Bold"),
-    ("BACKGROUND", (0,1), (-1,-1), CARD),
-    ("TEXTCOLOR",  (0,1), (0,-1), WHITE),
-    ("TEXTCOLOR",  (1,1), (1,-1), GREEN),
-    ("TEXTCOLOR",  (2,1), (-1,-1), WHITE),
-    ("FONTSIZE",   (0,0), (-1,-1), 9),
-    ("FONTNAME",   (1,1), (1,-1), "Courier"),
-    ("PADDING",    (0,0), (-1,-1), 6),
-    ("GRID",       (0,0), (-1,-1), 0.3, DARK2),
-    ("ROWBACKGROUNDS", (0,1), (-1,-1), [CARD, DARK2]),
-]))
-story += [m_table, sp(10)]
-story.append(PageBreak())
-
+story += [table(metrics_data, [2.5*cm, 5.5*cm, 2*cm, 6.5*cm], ROSE), sp(4)]
 story += [
-    h2("4.3 API Server"),
-    body("L'API Server consomme le topic crypto-metrics, maintient l'etat courant en memoire "
-         "(dernieres metriques par symbole + historique 200 points + 50 dernieres anomalies) "
-         "et expose deux interfaces :"),
-    sp(4),
-    bullet("REST : 5 endpoints GET documentes (health, metrics, metrics/:symbol, history/:symbol, anomalies)"),
-    bullet("WebSocket : Socket.IO v4.7 avec 5 types d'evenements push (metrics:update, anomaly:detected, server:stats, initial:state, subscribe:symbol)"),
-    bullet("Securite : helmet, express-rate-limit (100 req/15min/IP), CORS strict, morgan logging"),
-    sp(10),
+    code("Buffer circulaire : max 1000 trades / symbole, eviction TTL 10 minutes"),
+    sp(8),
 ]
 
-# ======================================================
-# 5. Dashboard
-# ======================================================
-story += [h1("5. Dashboard"), hr(),
-    body("Le dashboard est une application vanilla HTML/CSS/JS (sans framework) connectee au backend "
-         "via Socket.IO. Les metriques sont mises a jour en temps reel par push serveur, sans polling."),
+story += [h2("4.3 API Server"), sp(3)]
+story += [
+    body("L'API expose 5 endpoints REST et 5 types d'evenements Socket.IO. Elle maintient "
+         "l'etat courant en memoire : dernieres metriques + historique 200 points + 50 anomalies."),
+]
+api_data = [
+    ["Endpoint / Evenement", "Type", "Description"],
+    ["GET /api/health",           "REST",      "Sante du service"],
+    ["GET /api/metrics",          "REST",      "Toutes les metriques"],
+    ["GET /api/metrics/:symbol",  "REST",      "Metriques par paire"],
+    ["GET /api/history/:symbol",  "REST",      "Historique 200 points"],
+    ["GET /api/anomalies",        "REST",      "50 dernieres anomalies"],
+    ["metrics:update",            "Socket.IO", "Push nouvelles metriques"],
+    ["anomaly:detected",          "Socket.IO", "Push alerte z-score"],
+    ["server:stats",              "Socket.IO", "Stats connexions / msg/s"],
+]
+story += [table(api_data, [5.5*cm, 2.5*cm, 8.5*cm], BLUE), sp(8), PageBreak()]
+
+# ══════════════════════════════════════════════════════
+# 5. DASHBOARD
+# ══════════════════════════════════════════════════════
+story += [rose_label("dashboard"), h1("5. Dashboard"), hr()]
+story += [
+    body("Application vanilla HTML/CSS/JS connectee via Socket.IO. Aucun framework front-end "
+         "pour minimiser les dependances et maximiser la performance de chargement."),
+    sp(6), h2("5.1 Composants"),
+    bul("Section hero : prix avec flash vert/rouge, badges variation 1min/5min"),
+    bul("4 stat-cards : volume (1min), transactions, high, low"),
+    bul("Graphique prix + SMA-20 superposee (Chart.js 4.4, 200 points)"),
+    bul("Barres de volume par paire"),
+    bul("Flux anomalies en temps reel avec beep AudioContext"),
+    bul("Horloge + statut connexion live"),
+    sp(8), h2("5.2 Design EFREI"),
+    body("Palette brand EFREI officielle : fond navy #163767, accent rose #ff43b8, "
+         "bleu #3653a0. Barre gradient EFREI en haut de page. Logos SVG officiels "
+         "Bitcoin, Ethereum, Coinbase. Typo Inter (Google Fonts)."),
+    sp(6), h2("5.3 Mode demonstration"),
+    body("Si le backend est inaccessible apres 3 secondes, le mode demo s'active. "
+         "Donnees simulees realistes (BTC ~67k, ETH ~3.5k), mise a jour 800ms. "
+         "Badge DEMO rose dans le header."),
+    sp(10), PageBreak(),
+]
+
+# ══════════════════════════════════════════════════════
+# 6. i18n
+# ══════════════════════════════════════════════════════
+story += [rose_label("internationalisation"), h1("6. Multilinguisme i18n"), hr()]
+story += [
+    body("Module vanilla JS IIFE (I18n) sans dependance externe. Charge les JSON "
+         "depuis i18n/{locale}.json, persiste le choix en localStorage, applique "
+         "les traductions via attributs data-i18n."),
     sp(6),
-    h2("5.1 Composants visuels"),
-    bullet("Section hero : prix actuel avec flash vert/rouge au changement, badges variation 1min/5min"),
-    bullet("Stat-cards : volume (1min), nombre de transactions, high/low de la bougie courante"),
-    bullet("Graphique prix : ligne prix + SMA-20 superposee (Chart.js 4.4, 200 points max)"),
-    bullet("Graphique volume : barres par paire (BTC-USDT, ETH-USDT, BTC-USD)"),
-    bullet("Flux anomalies : liste deroulante avec icone alerte, valeur z-score, beep AudioContext"),
-    bullet("Header : horloge temps reel, statut de connexion (live/demo), bascule FR/EN"),
-    sp(8),
-    h2("5.2 Design system"),
-    body("Le design reprend l'identite visuelle de l'EFREI Paris : fond navy (#0A0E1A), accent amber/or "
-         "(#F59E0B), typo Inter. Une barre de gradient amber-violet en haut de page sert de signature "
-         "institutionnelle. Les logos crypto (Bitcoin, Ethereum, Coinbase) sont des SVG officiels."),
-    sp(8),
-    h2("5.3 Mode demonstration"),
-    body("Si le backend est inaccessible apres 3 secondes (pas de connexion Socket.IO etablie), "
-         "le mode demo s'active automatiquement. Des donnees simulees realistes sont injectees "
-         "(prix de base BTC ~67k USD, ETH ~3.5k USD, variations aleatoires de +/-0.15%), "
-         "avec mise a jour toutes les 800ms. Un badge 'DEMO' ambra s'affiche dans le header."),
-    sp(10),
-]
-story.append(PageBreak())
-
-# ======================================================
-# 6. Internationalisation
-# ======================================================
-story += [h1("6. Internationalisation (i18n)"), hr(),
-    body("Le dashboard supporte le francais (langue par defaut) et l'anglais. L'implementation "
-         "est un module vanilla JS (IIFE I18n) sans dependance externe."),
-    sp(6),
-    h2("Principe de fonctionnement"),
-    bullet("Chargement asynchrone du fichier i18n/{locale}.json au demarrage"),
-    bullet("Tous les elements statiques portent un attribut data-i18n (cle de traduction)"),
-    bullet("La langue est persistee dans localStorage sous la cle cmm-locale"),
-    bullet("document.documentElement.lang est mis a jour pour les technologies d'assistance"),
-    bullet("Les fonctions formatPrice() et formatTime() utilisent l'API Intl pour le formatage locale-aware"),
-    sp(10),
+    bul("Francais par defaut, Anglais en option"),
+    bul("Attributs data-i18n sur tous les elements statiques"),
+    bul("Intl.NumberFormat / Intl.DateTimeFormat pour formatage locale-aware"),
+    bul("document.documentElement.lang mis a jour pour accessibilite"),
+    bul("aria-pressed sur les boutons FR | EN"),
+    sp(10), PageBreak(),
 ]
 
-# ======================================================
-# 7. Securite
-# ======================================================
-story += [h1("7. Securite"), hr()]
+# ══════════════════════════════════════════════════════
+# 7. SECURITE
+# ══════════════════════════════════════════════════════
+story += [rose_label("securite"), h1("7. Securite - Production-ready"), hr()]
 
-sec_items = [
-    ("helmet", "Configuration des HTTP response headers : Content-Security-Policy, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy."),
-    ("express-rate-limit", "Limite de 100 requetes par fenetre de 15 minutes par adresse IP. Protection contre le brute-force et les attaques DDoS applicatives."),
-    ("zod", "Validation stricte des variables d'environnement au demarrage du service. Le processus s'arrete si une variable obligatoire est absente ou invalide."),
-    ("CORS strict", "Whitelist explicite des origines autorisees. Pas de wildcard (*) en production."),
-    ("morgan", "Logging HTTP avec rotation de fichiers. Aucune stack trace n'est exposee dans les reponses HTTP cote client."),
-    ("Docker non-root", "Tous les conteneurs tournent avec un utilisateur applicatif (UID 1000, appuser). Le dossier applicatif appartient a cet utilisateur."),
-    (".dockerignore", "Les fichiers .env, node_modules, secrets et fichiers de developpement sont exclus des images Docker."),
-    ("Secrets", "Zero secret en dur dans le code source. Toutes les variables sensibles sont injectees via des variables d'environnement. Le .env est gitignore."),
+sec_data = [
+    ["Composant", "Protection"],
+    ["helmet",             "HTTP headers : CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy"],
+    ["express-rate-limit", "100 req / 15min / IP - protection brute-force et DDoS applicatif"],
+    ["zod",                "Validation stricte des variables d'environnement - arret si manquante/invalide"],
+    ["CORS strict",        "Whitelist explicite des origines - pas de wildcard (*)"],
+    ["morgan",             "Logging HTTP avec rotation - aucune stack trace exposee cote client"],
+    ["Docker non-root",    "Tous les conteneurs tournent en utilisateur appuser (UID 1000)"],
+    [".dockerignore",      "Exclusion des .env, node_modules, secrets des images Docker"],
+    ["Secrets env vars",   "Zero secret en dur - .env gitignore, patterns dans .gitignore"],
 ]
+story += [table(sec_data, [3.5*cm, 13*cm], RED_LT), sp(10), PageBreak()]
 
-for tech, desc in sec_items:
-    story += [Paragraph(tech, ST_AMBER), Paragraph(desc, ST_BODY_L), sp(4)]
+# ══════════════════════════════════════════════════════
+# 8. DEPLOIEMENT
+# ══════════════════════════════════════════════════════
+story += [rose_label("deploiement"), h1("8. Options de deploiement"), hr()]
 
-story.append(PageBreak())
+deploy_data = [
+    ["Option", "Commande", "Usage"],
+    ["Lanceur .exe",   "node launcher/src/index.mjs\n(compile : npm run build:win)", "Demo, machines sans Docker Compose"],
+    ["Image tout-en-un", "docker run -p 8080:8080 crypto-monitor", "Demo standalone, 1 seul conteneur"],
+    ["Docker Compose", "docker-compose up --build -d",              "Developpement, debug, Kafka UI :8090"],
+]
+story += [table(deploy_data, [3.5*cm, 6.5*cm, 6.5*cm], BLUE), sp(8)]
 
-# ======================================================
-# 8. Deploiement
-# ======================================================
-story += [h1("8. Options de deploiement"), hr()]
+story += [h2("Variables d'environnement cles")]
+env_data = [
+    ["Variable", "Defaut", "Description"],
+    ["KAFKA_BROKERS",            "localhost:9092", "Bootstrap servers Kafka"],
+    ["KAFKA_TOPIC_TRADES",       "crypto-trades",  "Topic transactions brutes"],
+    ["KAFKA_TOPIC_METRICS",      "crypto-metrics", "Topic metriques calculees"],
+    ["API_PORT",                 "3001",           "Port du serveur API"],
+    ["SMA_WINDOW",               "20",             "Fenetre SMA (nombre de trades)"],
+    ["ANOMALY_ZSCORE_THRESHOLD", "2.5",            "Seuil z-score alerte"],
+    ["HISTORY_WINDOW_SECONDS",   "300",            "Retention historique (5 min)"],
+]
+story += [table(env_data, [5*cm, 3.5*cm, 8*cm]), sp(10), PageBreak()]
 
+# ══════════════════════════════════════════════════════
+# 9. BILAN
+# ══════════════════════════════════════════════════════
+story += [rose_label("bilan"), h1("9. Bilan et perspectives"), hr()]
 story += [
-    h2("8.1 Docker Compose (recommande pour le developpement)"),
-    body("6 services independants avec healthchecks et restart on-failure : kafka, kafka-ui, "
-         "ingester, processor, api, dashboard (nginx). Le dashboard est accessible sur le port 8080, "
-         "Kafka UI sur 8090, l'API sur 3001."),
-    Paragraph("docker-compose up --build -d", ST_CODE),
-    sp(8),
-    h2("8.2 Image tout-en-un (demonstration / production)"),
-    body("Une image Docker unique (all-in-one.Dockerfile) embarque Apache Kafka (Java 17), "
-         "les 3 services Node.js et nginx, geres par supervisord. Cela permet un deploiement "
-         "en une seule commande sans Docker Compose."),
-    Paragraph("docker build -f all-in-one.Dockerfile -t crypto-monitor .", ST_CODE),
-    Paragraph("docker run -p 8080:8080 -p 3001:3001 crypto-monitor", ST_CODE),
-    sp(8),
-    h2("8.3 Lanceur autonome (.exe)"),
-    body("Un script Node.js ESM (launcher/src/index.mjs) orchestre le demarrage : verification "
-         "de Docker, build des images, attente des healthchecks, ouverture du navigateur, "
-         "streaming des logs. Il peut etre compile en executable standalone via pkg :"),
-    Paragraph("cd launcher && npm install && npm run build:win  # Windows .exe", ST_CODE),
-    Paragraph("cd launcher && npm install && npm run build:linux  # Linux binaire", ST_CODE),
-    sp(10),
-]
-
-story += [
-    h2("8.4 Variables d'environnement cles"),
-]
-env_vars = [
-    ["Variable", "Valeur par defaut", "Description"],
-    ["KAFKA_BROKERS",             "localhost:9092", "Serveurs bootstrap Kafka"],
-    ["KAFKA_TOPIC_TRADES",        "crypto-trades",  "Topic des transactions brutes"],
-    ["KAFKA_TOPIC_METRICS",       "crypto-metrics", "Topic des metriques traitees"],
-    ["API_PORT",                  "3001",           "Port du serveur API"],
-    ["SMA_WINDOW",                "20",             "Taille de la fenetre SMA"],
-    ["ANOMALY_ZSCORE_THRESHOLD",  "2.5",            "Seuil z-score (anomalie)"],
-    ["HISTORY_WINDOW_SECONDS",    "300",            "Retention historique (5 min)"],
-]
-env_table = Table(env_vars, colWidths=[5.5*cm, 3.5*cm, 7.5*cm])
-env_table.setStyle(TableStyle([
-    ("BACKGROUND", (0,0), (-1,0), DARK2),
-    ("TEXTCOLOR",  (0,0), (-1,0), AMBER),
-    ("FONTNAME",   (0,0), (-1,0), "Helvetica-Bold"),
-    ("BACKGROUND", (0,1), (-1,-1), CARD),
-    ("TEXTCOLOR",  (0,1), (0,-1), GREEN),
-    ("TEXTCOLOR",  (1,1), (-1,-1), WHITE),
-    ("FONTNAME",   (0,1), (0,-1), "Courier"),
-    ("FONTNAME",   (1,1), (1,-1), "Courier"),
-    ("FONTSIZE",   (0,0), (-1,-1), 9),
-    ("PADDING",    (0,0), (-1,-1), 6),
-    ("GRID",       (0,0), (-1,-1), 0.3, DARK2),
-    ("ROWBACKGROUNDS", (0,1), (-1,-1), [CARD, DARK2]),
-]))
-story += [env_table, sp(10)]
-story.append(PageBreak())
-
-# ======================================================
-# 9. Conclusion
-# ======================================================
-story += [h1("9. Bilan et perspectives"), hr(),
-    h2("Ce qui a ete realise"),
-    bullet("Pipeline Kafka bout-en-bout fonctionnel (ingestion WS -> Kafka -> processing -> dashboard)"),
-    bullet("3 services TypeScript avec typage strict et tests unitaires de base"),
-    bullet("Dashboard dark theme EFREI avec Chart.js, i18n FR/EN et mode demo offline"),
-    bullet("Securite niveau production : helmet, rate-limiting, zod, CORS strict, non-root Docker"),
-    bullet("3 options de deploiement : Docker Compose, image tout-en-un, lanceur .exe"),
-    bullet("Projet realise a 2 personnes pour une consigne prevue a 4"),
-    sp(10),
-    h2("Perspectives d'evolution"),
-    bullet("Ajout de paires supplementaires : SOL/USDT, BNB/USDT, XRP/USDT"),
-    bullet("Alertes email ou SMS via webhook (Kafka Connect + plugin SMTP/Twilio)"),
-    bullet("Stockage historique dans InfluxDB ou TimescaleDB pour le backtesting"),
-    bullet("Deploiement Kubernetes avec Helm chart pour la scalabilite horizontale"),
-    bullet("Authentification JWT pour les endpoints REST et les connexions Socket.IO"),
-    bullet("Tests d'integration complets avec Testcontainers (Kafka reel en CI)"),
-    sp(20),
-    hr(),
+    h2("Realise"), sp(3),
+    bul("Pipeline Kafka bout-en-bout fonctionnel (WebSocket -> Kafka -> analytics -> push)"),
+    bul("3 services TypeScript avec typage strict"),
+    bul("Dashboard EFREI-branded avec Chart.js, i18n FR/EN, mode demo offline"),
+    bul("Securite production : helmet, rate-limit, zod, CORS strict, non-root Docker"),
+    bul("3 options deploiement : Docker Compose, image tout-en-un, lanceur .exe"),
+    bul("Projet realise a 2 personnes pour une consigne prevue a 4"),
+    sp(10), h2("Perspectives"), sp(3),
+    bul("Ajout de paires : SOL/USDT, BNB/USDT, XRP/USDT"),
+    bul("Alertes email/SMS via Kafka Connect (plugin SMTP / Twilio)"),
+    bul("Stockage historique : InfluxDB ou TimescaleDB pour le backtesting"),
+    bul("Kubernetes + Helm chart pour la scalabilite horizontale"),
+    bul("Authentification JWT sur les endpoints REST et Socket.IO"),
+    bul("Tests d'integration Testcontainers (Kafka reel en CI/CD)"),
+    sp(20), hr(NAVY),
     Paragraph("Crypto Market Monitor - Rapport Technique", ST_CAPTION),
     Paragraph("Adam Beloucif, Emilien Morice - M1 Data Engineering & IA - EFREI Paris - 2025-2026", ST_CAPTION),
 ]
 
 doc.build(story)
-print("PDF saved -> " + OUT)
+print("PDF v2 saved -> " + OUT)
