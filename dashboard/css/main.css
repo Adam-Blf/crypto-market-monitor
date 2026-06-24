@@ -560,3 +560,89 @@ body {
   .hero-card { flex-direction: column; gap: 20px; align-items: flex-start; }
   .hero-right { align-items: flex-start; }
 }
+
+/* ============================================================
+   LANG SWITCHER
+   ============================================================ */
+.lang-switcher {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 16px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.lang-btn {
+  background: transparent;
+  border: none;
+  color: rgba(240,244,255,0.45);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.lang-btn:hover {
+  color: rgba(240,244,255,0.85);
+  background: rgba(255,255,255,0.08);
+}
+
+.lang-btn.active {
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+}
+
+.lang-sep {
+  color: rgba(255,255,255,0.15);
+  font-size: 11px;
+  user-select: none;
+}
+
+/* ---- header center ---- */
+.header-center { flex: 1; display: flex; justify-content: center; }
+
+/* ============================================================
+   ZSCORE BADGE
+   ============================================================ */
+.zscore-badge {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--accent-amber);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+/* ============================================================
+   RESPONSIVE 480px
+   ============================================================ */
+@media (max-width: 480px) {
+  .symbol-tabs { flex-wrap: wrap; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .hero-price { font-size: 28px; }
+}
+
+/* ============================================================
+   PREFERS-REDUCED-MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .loading-spinner { animation: none; }
+  .status-dot.connected { animation: none; }
+  .header-badge { animation: none; }
+  .anomaly-item { animation: none; }
+}
