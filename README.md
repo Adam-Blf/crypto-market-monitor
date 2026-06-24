@@ -69,12 +69,33 @@ graph LR
 
 ## Quick Start
 
-### Prerequisites
+### Option 1 - Launcher (single executable, no Node.js required)
 
-- Docker and Docker Compose
-- Node.js >= 20 (for local dev only)
+```bash
+# Clone and launch with one command
+git clone https://github.com/Adam-Blf/crypto-market-monitor.git
+cd crypto-market-monitor
+node launcher/src/index.mjs
+```
 
-### Run with Docker
+The launcher checks Docker, builds all images, waits for health checks, and opens the dashboard automatically. Press `Ctrl+C` to stop everything cleanly.
+
+### Option 2 - All-in-one Docker image (single container)
+
+```bash
+# Build the all-in-one image (Kafka + all services + nginx)
+docker build -f all-in-one.Dockerfile -t crypto-monitor .
+
+# Run with a single command
+docker run -d -p 8080:8080 -p 3001:3001 --name cmm crypto-monitor
+
+# Stop
+docker stop cmm && docker rm cmm
+```
+
+This image bundles Apache Kafka (KRaft), Ingester, Processor, API, and Dashboard in a single container managed by supervisord.
+
+### Option 3 - Docker Compose (recommended for development)
 
 ```bash
 # Clone the repo
@@ -91,20 +112,21 @@ docker-compose up --build -d
 docker-compose logs -f
 ```
 
-Open:
-- Dashboard: http://localhost:8080
-- Kafka UI: http://localhost:8090
-- API health: http://localhost:3001/api/health
-
-### Local development
+### Option 4 - Local development (no Docker)
 
 ```bash
+# Requires a running Kafka instance (see docker-compose for Kafka only)
 npm install
 npm run dev:ingester   # terminal 1
 npm run dev:processor  # terminal 2
 npm run dev:api        # terminal 3
-# open dashboard/index.html in browser
+# open dashboard/index.html in browser (demo mode activates if no backend)
 ```
+
+Open:
+- Dashboard: http://localhost:8080
+- Kafka UI: http://localhost:8090 (Docker Compose only)
+- API health: http://localhost:3001/api/health
 
 ---
 
@@ -112,12 +134,15 @@ npm run dev:api        # terminal 3
 
 ```
 crypto-market-monitor/
-- ingester/          WebSocket clients - Binance + Coinbase - Kafka producer
-- processor/         Kafka consumer - analytics engine (VWAP, SMA, z-score)
-- api/               Express REST + Socket.IO push layer
-- dashboard/         Static HTML/CSS/JS live dashboard
-- docker-compose.yml Full stack orchestration
-- .env.example       Environment template
+- ingester/              WebSocket clients - Binance + Coinbase - Kafka producer
+- processor/             Kafka consumer - analytics engine (VWAP, SMA, z-score)
+- api/                   Express REST + Socket.IO push layer
+- dashboard/             Static HTML/CSS/JS live dashboard (FR/EN i18n, demo mode)
+- launcher/              Standalone launcher - compiled to .exe via pkg
+- scripts/               Supervisord config, Kafka init script
+- docker-compose.yml     Multi-container orchestration
+- all-in-one.Dockerfile  Single-container image (Kafka + all services)
+- .env.example           Environment template
 ```
 
 ---
