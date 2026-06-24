@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crypto Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-icon">&#9670;</span>
+        <span class="logo-text">CRYPTO MONITOR</span>
+      </div>
+      <div class="header-badge">LIVE</div>
+    </div>
+    <div class="header-center">
+      <div class="clock" id="clock">00:00:00</div>
+    </div>
+    <div class="header-right">
+      <div class="connection-status" id="connectionStatus">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-label" id="statusLabel">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- Symbol selector -->
+    <div class="symbol-tabs" id="symbolTabs">
+      <button class="tab active" data-symbol="BTC-USDT">
+        <span class="tab-icon">&#8383;</span>
+        BTC-USDT
+      </button>
+      <button class="tab" data-symbol="ETH-USDT">
+        <span class="tab-icon">&#9830;</span>
+        ETH-USDT
+      </button>
+      <button class="tab" data-symbol="BTC-USD">
+        <span class="tab-icon">&#8383;</span>
+        BTC-USD
+      </button>
+    </div>
+
+    <!-- Hero price card -->
+    <div class="hero-card card">
+      <div class="hero-left">
+        <div class="hero-symbol" id="heroSymbol">BTC-USDT</div>
+        <div class="hero-price" id="heroPrice">--,---.--</div>
+        <div class="hero-change-row">
+          <span class="change-badge neutral" id="changeBadge1m">0.00%</span>
+          <span class="change-label">1m</span>
+          <span class="change-badge neutral" id="changeBadge5m">0.00%</span>
+          <span class="change-label">5m</span>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="metric-item">
+          <span class="metric-label">VWAP</span>
+          <span class="metric-value" id="vwapValue">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">SMA 20</span>
+          <span class="metric-value" id="sma20Value">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Last update</span>
+          <span class="metric-value small" id="lastUpdate">-</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-row">
+      <div class="stat-card card">
+        <div class="stat-label">Volume (1m)</div>
+        <div class="stat-value" id="volume1m">-</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-label">Trades (1m)</div>
+        <div class="stat-value" id="tradeCount1m">-</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-label">High (1m)</div>
+        <div class="stat-value positive" id="high1m">-</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-label">Low (1m)</div>
+        <div class="stat-value negative" id="low1m">-</div>
+      </div>
+    </div>
+
+    <!-- Charts + Anomaly feed -->
+    <div class="charts-grid">
+
+      <!-- Price chart -->
+      <div class="chart-card card">
+        <div class="card-header">
+          <span class="card-title">Price History</span>
+          <span class="card-subtitle" id="chartSymbolLabel">BTC-USDT</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="priceChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Anomaly feed -->
+      <div class="anomaly-card card">
+        <div class="card-header">
+          <span class="card-title">Anomaly Feed</span>
+          <span class="anomaly-count-badge" id="anomalyCount">0</span>
+        </div>
+        <div class="anomaly-list" id="anomalyList">
+          <div class="anomaly-empty">No anomalies detected yet</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Volume chart -->
+    <div class="volume-card card">
+      <div class="card-header">
+        <span class="card-title">Volume per Symbol (1m)</span>
+      </div>
+      <div class="chart-container chart-container--short">
+        <canvas id="volumeChart"></canvas>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>Real-Time Engineering - M1 EFREI - Adam Beloucif, Emilien Morice</span>
+    <span class="footer-dot">|</span>
+    <span id="footerStats">0 msg/s</span>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
