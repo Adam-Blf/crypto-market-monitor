@@ -1,98 +1,114 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Crypto Monitor</title>
+  <meta name="description" content="Surveillance temps reel des marches crypto - pipeline Kafka avec dashboard live. Binance + Coinbase, VWAP, SMA-20, detection d'anomalies." />
+  <meta name="theme-color" content="#0a0e1a" />
+  <meta property="og:title" content="Crypto Monitor - Real-Time Dashboard" />
+  <meta property="og:description" content="Kafka streaming pipeline with live Binance/Coinbase feeds, VWAP, SMA-20 and anomaly detection." />
+  <title>Crypto Monitor - Real-Time</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/main.css" />
 </head>
 <body>
+
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loadingOverlay" role="status" aria-label="Chargement en cours">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <span class="loading-text">Connexion au flux de marche...</span>
+  </div>
+
   <!-- Header -->
-  <header class="header">
+  <header class="header" role="banner">
     <div class="header-left">
-      <div class="logo">
-        <span class="logo-icon">&#9670;</span>
-        <span class="logo-text">CRYPTO MONITOR</span>
+      <div class="logo" aria-label="Crypto Monitor">
+        <span class="logo-icon" aria-hidden="true">&#9670;</span>
+        <span class="logo-text" data-i18n="title">CRYPTO MONITOR</span>
       </div>
-      <div class="header-badge">LIVE</div>
+      <div class="header-badge" aria-label="Diffusion en direct" data-i18n="live">EN DIRECT</div>
     </div>
     <div class="header-center">
-      <div class="clock" id="clock">00:00:00</div>
+      <time class="clock" id="clock" aria-label="Heure actuelle">00:00:00</time>
     </div>
     <div class="header-right">
-      <div class="connection-status" id="connectionStatus">
-        <span class="status-dot" id="statusDot"></span>
-        <span class="status-label" id="statusLabel">Connecting...</span>
+      <div class="connection-status" id="connectionStatus" role="status" aria-live="polite">
+        <span class="status-dot" id="statusDot" aria-hidden="true"></span>
+        <span class="status-label" id="statusLabel" data-i18n="connecting">Connexion...</span>
+      </div>
+      <div class="lang-switcher" role="group" aria-label="Choix de la langue">
+        <button class="lang-btn active" data-lang="fr" onclick="switchLang('fr')" aria-pressed="true">FR</button>
+        <span class="lang-sep" aria-hidden="true">|</span>
+        <button class="lang-btn" data-lang="en" onclick="switchLang('en')" aria-pressed="false">EN</button>
       </div>
     </div>
   </header>
 
   <!-- Main content -->
-  <main class="main">
+  <main class="main" role="main">
 
     <!-- Symbol selector -->
-    <div class="symbol-tabs" id="symbolTabs">
-      <button class="tab active" data-symbol="BTC-USDT">
-        <span class="tab-icon">&#8383;</span>
+    <nav class="symbol-tabs" id="symbolTabs" role="tablist" aria-label="Paires de crypto-monnaies">
+      <button class="tab active" data-symbol="BTC-USDT" role="tab" aria-selected="true">
+        <span class="tab-icon" aria-hidden="true">&#8383;</span>
         BTC-USDT
       </button>
-      <button class="tab" data-symbol="ETH-USDT">
-        <span class="tab-icon">&#9830;</span>
+      <button class="tab" data-symbol="ETH-USDT" role="tab" aria-selected="false">
+        <span class="tab-icon" aria-hidden="true">&#9830;</span>
         ETH-USDT
       </button>
-      <button class="tab" data-symbol="BTC-USD">
-        <span class="tab-icon">&#8383;</span>
+      <button class="tab" data-symbol="BTC-USD" role="tab" aria-selected="false">
+        <span class="tab-icon" aria-hidden="true">&#8383;</span>
         BTC-USD
       </button>
-    </div>
+    </nav>
 
     <!-- Hero price card -->
-    <div class="hero-card card">
+    <section class="hero-card card" aria-label="Prix actuel et metriques principales">
       <div class="hero-left">
         <div class="hero-symbol" id="heroSymbol">BTC-USDT</div>
-        <div class="hero-price" id="heroPrice">--,---.--</div>
+        <div class="hero-price" id="heroPrice" aria-live="polite" aria-label="Prix actuel">--,---.--</div>
         <div class="hero-change-row">
           <span class="change-badge neutral" id="changeBadge1m">0.00%</span>
-          <span class="change-label">1m</span>
+          <span class="change-label" data-i18n="stats.change1m">Var. 1min</span>
           <span class="change-badge neutral" id="changeBadge5m">0.00%</span>
-          <span class="change-label">5m</span>
+          <span class="change-label" data-i18n="stats.change5m">Var. 5min</span>
         </div>
       </div>
       <div class="hero-right">
         <div class="metric-item">
-          <span class="metric-label">VWAP</span>
+          <span class="metric-label" data-i18n="price.vwap">VWAP</span>
           <span class="metric-value" id="vwapValue">-</span>
         </div>
         <div class="metric-item">
-          <span class="metric-label">SMA 20</span>
+          <span class="metric-label" data-i18n="price.sma20">SMA-20</span>
           <span class="metric-value" id="sma20Value">-</span>
         </div>
         <div class="metric-item">
-          <span class="metric-label">Last update</span>
+          <span class="metric-label" data-i18n="price.lastUpdate">Derniere mise a jour</span>
           <span class="metric-value small" id="lastUpdate">-</span>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- Stats row -->
-    <div class="stats-row">
+    <div class="stats-row" role="region" aria-label="Statistiques du marche">
       <div class="stat-card card">
-        <div class="stat-label">Volume (1m)</div>
+        <div class="stat-label" data-i18n="stats.volume">Volume (1min)</div>
         <div class="stat-value" id="volume1m">-</div>
       </div>
       <div class="stat-card card">
-        <div class="stat-label">Trades (1m)</div>
+        <div class="stat-label" data-i18n="stats.trades">Transactions (1min)</div>
         <div class="stat-value" id="tradeCount1m">-</div>
       </div>
       <div class="stat-card card">
-        <div class="stat-label">High (1m)</div>
+        <div class="stat-label" data-i18n="stats.high">Haut (1min)</div>
         <div class="stat-value positive" id="high1m">-</div>
       </div>
       <div class="stat-card card">
-        <div class="stat-label">Low (1m)</div>
+        <div class="stat-label" data-i18n="stats.low">Bas (1min)</div>
         <div class="stat-value negative" id="low1m">-</div>
       </div>
     </div>
@@ -103,7 +119,7 @@
       <!-- Price chart -->
       <div class="chart-card card">
         <div class="card-header">
-          <span class="card-title">Price History</span>
+          <span class="card-title" data-i18n="chart.price">Historique du prix</span>
           <span class="card-subtitle" id="chartSymbolLabel">BTC-USDT</span>
         </div>
         <div class="chart-container">
@@ -114,11 +130,11 @@
       <!-- Anomaly feed -->
       <div class="anomaly-card card">
         <div class="card-header">
-          <span class="card-title">Anomaly Feed</span>
+          <span class="card-title" data-i18n="anomalies.title">Alertes anomalies</span>
           <span class="anomaly-count-badge" id="anomalyCount">0</span>
         </div>
         <div class="anomaly-list" id="anomalyList">
-          <div class="anomaly-empty">No anomalies detected yet</div>
+          <div class="anomaly-empty" data-i18n="anomalies.empty">Aucune anomalie detectee</div>
         </div>
       </div>
 
@@ -127,7 +143,7 @@
     <!-- Volume chart -->
     <div class="volume-card card">
       <div class="card-header">
-        <span class="card-title">Volume per Symbol (1m)</span>
+        <span class="card-title" data-i18n="chart.volume">Volume par paire (1min)</span>
       </div>
       <div class="chart-container chart-container--short">
         <canvas id="volumeChart"></canvas>
@@ -137,15 +153,34 @@
   </main>
 
   <!-- Footer -->
-  <footer class="footer">
-    <span>Real-Time Engineering - M1 EFREI - Adam Beloucif, Emilien Morice</span>
-    <span class="footer-dot">|</span>
-    <span id="footerStats">0 msg/s</span>
+  <footer class="footer" role="contentinfo">
+    <span>
+      <span data-i18n="footer.module">Ingenierie Temps Reel - M1 EFREI</span>
+      -
+      <span data-i18n="footer.authors">Adam Beloucif, Emilien Morice</span>
+    </span>
+    <span class="footer-dot" aria-hidden="true">|</span>
+    <span id="footerStats" aria-live="polite">0 msg/s</span>
+    <span class="footer-dot" aria-hidden="true">|</span>
+    <span class="footer-kafka" aria-label="Propulse par Apache Kafka">
+      <span aria-hidden="true">&#9656;</span> Powered by Kafka 3.7
+    </span>
   </footer>
 
   <!-- Scripts -->
   <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/main.js"></script>
+
+  <!-- Dismiss loading overlay -->
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        var o = document.getElementById('loadingOverlay');
+        if (o) o.classList.add('hidden');
+      }, 600);
+    });
+  </script>
 </body>
 </html>

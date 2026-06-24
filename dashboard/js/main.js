@@ -12,13 +12,34 @@ const MAX_ANOMALIES    = 50;
    ============================================================ */
 const state = {
   currentSymbol : 'BTC-USDT',
-  metrics       : {},   // symbol -> latest Metrics
-  history       : {},   // symbol -> Metrics[] (ring buffer)
-  anomalies     : [],   // Metrics[] newest first
+  metrics       : {},
+  history       : {},
+  anomalies     : [],
   msgCount      : 0,
   msgCountStart : Date.now(),
   socket        : null,
 };
+
+/* ============================================================
+   I18N HELPERS
+   ============================================================ */
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    const val = I18n.t(key);
+    if (val !== key) el.textContent = val;
+  });
+}
+
+function switchLang(locale) {
+  I18n.load(locale).then(() => {
+    applyTranslations();
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === locale);
+    });
+    setConnectionStatus(state.socket?.connected ?? false);
+  });
+}
 
 /* ============================================================
    CHARTS
@@ -71,7 +92,7 @@ function initPriceChart() {
       labels: [],
       datasets: [
         {
-          label: 'Price',
+          label: I18n.t('chart.priceLabel'),
           data: [],
           borderColor: '#00f5a0',
           backgroundColor: gradient,
@@ -82,7 +103,7 @@ function initPriceChart() {
           fill: true,
         },
         {
-          label: 'SMA20',
+          label: I18n.t('chart.smaLabel'),
           data: [],
           borderColor: 'rgba(59,130,246,0.7)',
           backgroundColor: 'transparent',
@@ -109,7 +130,7 @@ function initVolumeChart() {
       labels: ['BTC-USDT', 'ETH-USDT', 'BTC-USD'],
       datasets: [
         {
-          label: 'Volume (1m)',
+          label: I18n.t('stats.volume'),
           data: [0, 0, 0],
           backgroundColor: [
             'rgba(0,245,160,0.55)',
@@ -174,7 +195,8 @@ function refreshVolumeChart() {
    ============================================================ */
 function formatPrice(n) {
   if (n == null || isNaN(n)) return '-';
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const locale = I18n.getLocale() === 'fr' ? 'fr-FR' : 'en-US';
+  return n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatVolume(n) {
@@ -191,7 +213,8 @@ function formatPct(n) {
 }
 
 function formatTime(ts) {
-  return new Date(ts).toLocaleTimeString('en-US', { hour12: false });
+  const locale = I18n.getLocale() === 'fr' ? 'fr-FR' : 'en-US';
+  return new Date(ts).toLocaleTimeString(locale, { hour12: false });
 }
 
 /* ============================================================
@@ -252,7 +275,7 @@ function addAnomalyToFeed(metrics) {
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <span class="anomaly-price">$${formatPrice(metrics.currentPrice)}</span>
-      <span class="zscore-badge">z-score ${metrics.anomalyScore.toFixed(2)}</span>
+      <span class="zscore-badge">${I18n.t('anomalies.zscore')} ${metrics.anomalyScore.toFixed(2)}</span>
     </div>
   `;
   list.prepend(item);
@@ -358,10 +381,10 @@ function setConnectionStatus(connected) {
   const label = document.getElementById('statusLabel');
   if (connected) {
     dot.classList.add('connected');
-    label.textContent = 'Connected';
+    label.textContent = I18n.t('connected');
   } else {
     dot.classList.remove('connected');
-    label.textContent = 'Disconnected';
+    label.textContent = I18n.t('disconnected');
   }
 }
 
@@ -370,8 +393,9 @@ function setConnectionStatus(connected) {
    ============================================================ */
 function startClock() {
   const el = document.getElementById('clock');
+  const locale = I18n.getLocale() === 'fr' ? 'fr-FR' : 'en-US';
   function tick() {
-    el.textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+    el.textContent = new Date().toLocaleTimeString(locale, { hour12: false });
   }
   tick();
   setInterval(tick, 1000);
@@ -380,7 +404,15 @@ function startClock() {
 /* ============================================================
    INIT
    ============================================================ */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await I18n.load(I18n.getLocale());
+  applyTranslations();
+
+  const savedLang = localStorage.getItem('cmm-locale') || 'fr';
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === savedLang);
+  });
+
   initTabs();
   initPriceChart();
   initVolumeChart();
