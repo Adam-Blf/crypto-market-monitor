@@ -12,6 +12,7 @@ import { config } from './config';
 
 const app = express();
 
+// Middlewares de sécurité et de logging (main)
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
   contentSecurityPolicy: {
@@ -24,7 +25,7 @@ app.use(helmet({
 
 app.use(cors({
   origin: config.CORS_ORIGIN,
-  methods: ['GET'],
+  methods: ['GET'], // Ajustez si feat/api requiert POST/PUT/DELETE
   credentials: false,
 }));
 
@@ -40,8 +41,10 @@ app.use(morgan(config.NODE_ENV === 'production' ? 'tiny' : 'combined'));
 
 app.use(express.json({ limit: '10kb' }));
 
+// Routes de l'API
 app.use('/api', routes);
 
+// Gestion des erreurs et 404 (main)
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Not found' });
 });
@@ -54,6 +57,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
+// Initialisation des serveurs HTTP et WebSocket
 const server = http.createServer(app);
 createWsServer(server);
 
