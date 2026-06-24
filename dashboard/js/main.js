@@ -1,0 +1,491 @@
+'use strict';
+
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const API_URL = 'http://localhost:3001';
+const MAX_CHART_POINTS = 100;
+const MAX_ANOMALIES    = 50;
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  currentSymbol : 'BTC-USDT',
+  metrics       : {},
+  history       : {},
+  anomalies     : [],
+  msgCount      : 0,
+  msgCountStart : Date.now(),
+  socket        : null,
+};
+
+/* ============================================================
+   I18N HELPERS
+   ============================================================ */
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    const val = I18n.t(key);
+    if (val !== key) el.textContent = val;
+  });
+}
+
+function switchLang(locale) {
+  I18n.load(locale).then(() => {
+    applyTranslations();
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === locale);
+    });
+    setConnectionStatus(state.socket?.connected ?? false);
+  });
+}
+
+/* ============================================================
+   CHARTS
+   ============================================================ */
+let priceChart  = null;
+let volumeChart = null;
+
+const CHART_DEFAULTS = {
+  plugins: {
+    legend: {
+      labels: {
+        color: 'rgba(240,244,255,0.6)',
+        font: { size: 11, family: 'Inter' },
+        boxWidth: 12,
+      },
+    },
+    tooltip: {
+      backgroundColor: '#1a2236',
+      borderColor: 'rgba(255,255,255,0.1)',
+      borderWidth: 1,
+      titleColor: 'rgba(240,244,255,0.9)',
+      bodyColor : 'rgba(240,244,255,0.6)',
+      cornerRadius: 8,
+    },
+  },
+  scales: {
+    x: {
+      display: false,
+      grid: { color: 'rgba(255,255,255,0.04)' },
+    },
+    y: {
+      grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+      ticks: { color: 'rgba(240,244,255,0.45)', font: { size: 11 } },
+    },
+  },
+  animation: { duration: 150 },
+  responsive: true,
+  maintainAspectRatio: false,
+};
+
+function initPriceChart() {
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+  gradient.addColorStop(0,   'rgba(0,245,160,0.18)');
+  gradient.addColorStop(1,   'rgba(0,245,160,0)');
+
+  priceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: I18n.t('chart.priceLabel'),
+          data: [],
+          borderColor: '#00f5a0',
+          backgroundColor: gradient,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          tension: 0.3,
+          fill: true,
+        },
+        {
+          label: I18n.t('chart.smaLabel'),
+          data: [],
+          borderColor: 'rgba(59,130,246,0.7)',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderDash: [5, 3],
+          pointRadius: 0,
+          tension: 0.3,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      interaction: { mode: 'index', intersect: false },
+    },
+  });
+}
+
+function initVolumeChart() {
+  const ctx = document.getElementById('volumeChart').getContext('2d');
+  volumeChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['BTC-USDT', 'ETH-USDT', 'BTC-USD'],
+      datasets: [
+        {
+          label: I18n.t('stats.volume'),
+          data: [0, 0, 0],
+          backgroundColor: [
+            'rgba(0,245,160,0.55)',
+            'rgba(59,130,246,0.55)',
+            'rgba(255,171,0,0.55)',
+          ],
+          borderColor: [
+            '#00f5a0',
+            '#3b82f6',
+            '#ffab00',
+          ],
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+      ],
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      scales: {
+        ...CHART_DEFAULTS.scales,
+        x: {
+          display: true,
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: 'rgba(240,244,255,0.45)', font: { size: 11 } },
+        },
+      },
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        legend: { display: false },
+      },
+    },
+  });
+}
+
+function pushToHistory(symbol, metrics) {
+  if (!state.history[symbol]) state.history[symbol] = [];
+  state.history[symbol].push(metrics);
+  if (state.history[symbol].length > MAX_CHART_POINTS) {
+    state.history[symbol].shift();
+  }
+}
+
+function refreshPriceChart(symbol) {
+  const history = state.history[symbol] || [];
+  priceChart.data.labels                 = history.map(() => '');
+  priceChart.data.datasets[0].data       = history.map(m => m.currentPrice);
+  priceChart.data.datasets[1].data       = history.map(m => m.sma20);
+  priceChart.update('none');
+  document.getElementById('chartSymbolLabel').textContent = symbol;
+}
+
+function refreshVolumeChart() {
+  const symbols = ['BTC-USDT', 'ETH-USDT', 'BTC-USD'];
+  volumeChart.data.datasets[0].data = symbols.map(s =>
+    state.metrics[s] ? state.metrics[s].volumeTotal1m : 0
+  );
+  volumeChart.update('none');
+}
+
+/* ============================================================
+   FORMATTING HELPERS
+   ============================================================ */
+function formatPrice(n) {
+  if (n == null || isNaN(n)) return '-';
+  const locale = I18n.getLocale() === 'fr' ? 'fr-FR' : 'en-US';
+  return n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatVolume(n) {
+  if (n == null || isNaN(n)) return '-';
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
+  if (n >= 1_000)     return (n / 1_000).toFixed(2) + 'K';
+  return n.toFixed(2);
+}
+
+function formatPct(n) {
+  if (n == null || isNaN(n)) return '0.00%';
+  const sign = n >= 0 ? '+' : '';
+  return sign + n.toFixed(2) + '%';
+}
+
+function formatTime(ts) {
+  const locale = I18n.getLocale() === 'fr' ? 'fr-FR' : 'en-US';
+  return new Date(ts).toLocaleTimeString(locale, { hour12: false });
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function renderMetrics(metrics) {
+  const prevPrice = state.metrics[metrics.symbol]?.currentPrice;
+  state.metrics[metrics.symbol] = metrics;
+
+  if (metrics.symbol !== state.currentSymbol) return;
+
+  document.getElementById('heroSymbol').textContent = metrics.symbol;
+
+  const priceEl = document.getElementById('heroPrice');
+  const priceStr = formatPrice(metrics.currentPrice);
+  if (priceEl.textContent !== priceStr) {
+    priceEl.textContent = priceStr;
+    if (prevPrice != null) {
+      const cls = metrics.currentPrice > prevPrice ? 'flash-up' : 'flash-down';
+      priceEl.classList.remove('flash-up', 'flash-down');
+      void priceEl.offsetWidth;
+      priceEl.classList.add(cls);
+    }
+  }
+
+  const badge1m = document.getElementById('changeBadge1m');
+  badge1m.textContent = formatPct(metrics.priceChange1m);
+  badge1m.className   = 'change-badge ' + (metrics.priceChange1m >= 0 ? 'positive' : 'negative');
+
+  const badge5m = document.getElementById('changeBadge5m');
+  badge5m.textContent = formatPct(metrics.priceChange5m);
+  badge5m.className   = 'change-badge ' + (metrics.priceChange5m >= 0 ? 'positive' : 'negative');
+
+  document.getElementById('vwapValue').textContent  = formatPrice(metrics.vwap);
+  document.getElementById('sma20Value').textContent = formatPrice(metrics.sma20);
+  document.getElementById('lastUpdate').textContent = formatTime(metrics.timestamp);
+
+  document.getElementById('volume1m').textContent     = formatVolume(metrics.volumeTotal1m);
+  document.getElementById('tradeCount1m').textContent = metrics.tradeCount1m ?? '-';
+  document.getElementById('high1m').textContent        = formatPrice(metrics.highPrice1m);
+  document.getElementById('low1m').textContent         = formatPrice(metrics.lowPrice1m);
+}
+
+function addAnomalyToFeed(metrics) {
+  state.anomalies.unshift(metrics);
+  if (state.anomalies.length > MAX_ANOMALIES) state.anomalies.pop();
+
+  const list = document.getElementById('anomalyList');
+  const empty = list.querySelector('.anomaly-empty');
+  if (empty) empty.remove();
+
+  const item = document.createElement('div');
+  item.className = 'anomaly-item';
+  item.innerHTML = `
+    <div class="anomaly-item-header">
+      <span class="anomaly-symbol">${metrics.symbol}</span>
+      <span class="anomaly-time">${formatTime(metrics.timestamp)}</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <span class="anomaly-price">$${formatPrice(metrics.currentPrice)}</span>
+      <span class="zscore-badge">${I18n.t('anomalies.zscore')} ${metrics.anomalyScore.toFixed(2)}</span>
+    </div>
+  `;
+  list.prepend(item);
+
+  if (list.children.length > MAX_ANOMALIES) {
+    list.removeChild(list.lastChild);
+  }
+
+  document.getElementById('anomalyCount').textContent = state.anomalies.length;
+  playAnomalyBeep();
+}
+
+function playAnomalyBeep() {
+  try {
+    const ac  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.frequency.value = 880;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.08, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.25);
+    osc.start();
+    osc.stop(ac.currentTime + 0.25);
+  } catch (_) { /* AudioContext not available */ }
+}
+
+/* ============================================================
+   TAB SWITCHING
+   ============================================================ */
+function initTabs() {
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.currentSymbol = tab.dataset.symbol;
+      if (state.socket?.connected) {
+        state.socket.emit('subscribe:symbol', state.currentSymbol);
+      }
+      const current = state.metrics[state.currentSymbol];
+      if (current) renderMetrics(current);
+      fetchHistoryAndRefreshChart(state.currentSymbol);
+    });
+  });
+}
+
+async function fetchHistoryAndRefreshChart(symbol) {
+  try {
+    const res  = await fetch(`${API_URL}/api/history/${symbol}?limit=${MAX_CHART_POINTS}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      state.history[symbol] = data;
+    }
+  } catch (_) { /* server may not be ready */ }
+  refreshPriceChart(symbol);
+}
+
+/* ============================================================
+   DEMO MODE - activates after 3s if backend is unreachable
+   ============================================================ */
+const DEMO_BASE = { 'BTC-USDT': 67432.18, 'ETH-USDT': 3521.44, 'BTC-USD': 67389.92 };
+
+function buildMockMetrics(symbol, prevPrice) {
+  const base  = DEMO_BASE[symbol] || 50000;
+  const price = (prevPrice || base) + (Math.random() - 0.5) * 30;
+  return {
+    symbol,
+    timestamp:    Date.now(),
+    currentPrice: price,
+    vwap:         base * (1 + (Math.random() - 0.5) * 0.001),
+    sma20:        base * (1 + (Math.random() - 0.5) * 0.002),
+    priceChange1m: (Math.random() - 0.48) * 0.8,
+    priceChange5m: (Math.random() - 0.45) * 1.5,
+    volumeTotal1m: Math.floor(Math.random() * 5_000_000 + 1_000_000),
+    tradeCount1m:  Math.floor(Math.random() * 400 + 100),
+    highPrice1m:   base * 1.003,
+    lowPrice1m:    base * 0.997,
+    anomaly: false,
+    anomalyScore: 0.5,
+  };
+}
+
+function injectDemoData() {
+  const symbols = ['BTC-USDT', 'ETH-USDT', 'BTC-USD'];
+  symbols.forEach(sym => {
+    for (let i = 0; i < 60; i++) {
+      const m = buildMockMetrics(sym, state.metrics[sym]?.currentPrice);
+      pushToHistory(sym, m);
+      state.metrics[sym] = m;
+    }
+    if (sym === state.currentSymbol) renderMetrics(state.metrics[sym]);
+  });
+  refreshPriceChart(state.currentSymbol);
+  refreshVolumeChart();
+
+  setTimeout(() => {
+    addAnomalyToFeed({
+      symbol: 'BTC-USDT', timestamp: Date.now() - 12000,
+      currentPrice: 68105.77, anomalyScore: 3.12,
+    });
+  }, 800);
+
+  const badge = document.querySelector('.header-badge');
+  if (badge) {
+    badge.removeAttribute('data-i18n');
+    badge.textContent = 'DEMO';
+    badge.style.cssText = 'background:rgba(245,158,11,0.15);color:#F59E0B;border-color:rgba(245,158,11,0.3);animation:none;';
+  }
+  document.getElementById('footerStats').textContent = 'Mode demo - donnees simulees';
+
+  setInterval(() => {
+    const sym = symbols[Math.floor(Math.random() * symbols.length)];
+    const m   = buildMockMetrics(sym, state.metrics[sym]?.currentPrice);
+    state.msgCount++;
+    pushToHistory(sym, m);
+    renderMetrics(m);
+    if (sym === state.currentSymbol) refreshPriceChart(sym);
+    refreshVolumeChart();
+  }, 800);
+}
+
+/* ============================================================
+   SOCKET.IO
+   ============================================================ */
+function connectSocket() {
+  const socket = io(API_URL, {
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    transports: ['websocket', 'polling'],
+    timeout: 3000,
+  });
+  state.socket = socket;
+
+  const demoTimer = setTimeout(() => {
+    if (!socket.connected) injectDemoData();
+  }, 3000);
+
+  socket.on('connect', () => {
+    clearTimeout(demoTimer);
+    setConnectionStatus(true);
+    socket.emit('subscribe:symbol', state.currentSymbol);
+    fetchHistoryAndRefreshChart(state.currentSymbol);
+  });
+
+  socket.on('disconnect', () => setConnectionStatus(false));
+  socket.on('connect_error', () => setConnectionStatus(false));
+
+  socket.on('metrics:update', (metrics) => {
+    state.msgCount++;
+    pushToHistory(metrics.symbol, metrics);
+    renderMetrics(metrics);
+    if (metrics.symbol === state.currentSymbol) {
+      refreshPriceChart(state.currentSymbol);
+    }
+    refreshVolumeChart();
+  });
+
+  socket.on('anomaly:detected', (metrics) => {
+    addAnomalyToFeed(metrics);
+  });
+
+  socket.on('server:stats', (stats) => {
+    document.getElementById('footerStats').textContent =
+      `${stats.connections ?? '-'} clients - ${stats.msgsPerSec ?? '-'} msg/s`;
+  });
+}
+
+function setConnectionStatus(connected) {
+  const dot   = document.getElementById('statusDot');
+  const label = document.getElementById('statusLabel');
+  if (connected) {
+    dot.classList.add('connected');
+    label.textContent = I18n.t('connected');
+  } else {
+    dot.classList.remove('connected');
+    label.textContent = I18n.t('disconnected');
+  }
+}
+
+/* ============================================================
+   CLOCK
+   ============================================================ */
+function startClock() {
+  const el = document.getElementById('clock');
+  const locale = I18n.getLocale() === 'fr' ? 'fr-FR' : 'en-US';
+  function tick() {
+    el.textContent = new Date().toLocaleTimeString(locale, { hour12: false });
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', async () => {
+  await I18n.load(I18n.getLocale());
+  applyTranslations();
+
+  const savedLang = localStorage.getItem('cmm-locale') || 'fr';
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === savedLang);
+  });
+
+  initTabs();
+  initPriceChart();
+  initVolumeChart();
+  startClock();
+  connectSocket();
+});

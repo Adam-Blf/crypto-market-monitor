@@ -12,9 +12,8 @@ COPY package*.json ./
 RUN npm ci --only=production
 COPY --from=builder /app/dist ./dist
 
-# Sécurisation de l'exécution
+# Configuration de l'utilisateur non-root pour la sécurité
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
-EXPOSE 3001
 CMD ["node", "dist/index.js"]
