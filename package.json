@@ -1,0 +1,23 @@
+{
+  "name": "crypto-market-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "ingester",
+    "processor",
+    "api"
+  ],
+  "scripts": {
+    "dev:ingester": "npm run dev --workspace=ingester",
+    "dev:processor": "npm run dev --workspace=processor",
+    "dev:api": "npm run dev --workspace=api",
+    "build:all": "npm run build --workspaces",
+    "docker:up": "docker-compose up --build -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

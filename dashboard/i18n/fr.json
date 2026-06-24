@@ -1,0 +1,46 @@
+{
+  "title": "CRYPTO MONITOR",
+  "live": "EN DIRECT",
+  "connecting": "Connexion...",
+  "connected": "Connecte",
+  "disconnected": "Deconnecte",
+  "symbols": {
+    "label": "Paires"
+  },
+  "price": {
+    "current": "Prix actuel",
+    "vwap": "VWAP",
+    "sma20": "SMA-20",
+    "high": "Haut 1min",
+    "low": "Bas 1min",
+    "lastUpdate": "Derniere mise a jour"
+  },
+  "stats": {
+    "volume": "Volume (1min)",
+    "trades": "Transactions (1min)",
+    "high": "Haut (1min)",
+    "low": "Bas (1min)",
+    "change1m": "Var. 1min",
+    "change5m": "Var. 5min"
+  },
+  "chart": {
+    "price": "Historique du prix",
+    "volume": "Volume par paire (1min)",
+    "priceLabel": "Prix",
+    "smaLabel": "SMA20"
+  },
+  "anomalies": {
+    "title": "Alertes anomalies",
+    "empty": "Aucune anomalie detectee",
+    "zscore": "Score Z",
+    "whale": "Transaction baleine"
+  },
+  "footer": {
+    "module": "Ingenierie Temps Reel - M1 EFREI",
+    "authors": "Adam Beloucif, Emilien Morice"
+  },
+  "lang": {
+    "fr": "FR",
+    "en": "EN"
+  }
+}
