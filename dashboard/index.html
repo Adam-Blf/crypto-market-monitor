@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Surveillance temps reel des marches crypto - pipeline Kafka avec dashboard live. Binance + Coinbase, VWAP, SMA-20, detection d'anomalies." />
+  <meta name="theme-color" content="#0a0e1a" />
+  <meta property="og:title" content="Crypto Monitor - Real-Time Dashboard" />
+  <meta property="og:description" content="Kafka streaming pipeline with live Binance/Coinbase feeds, VWAP, SMA-20 and anomaly detection." />
+  <title>Crypto Monitor - Real-Time</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+  <!-- EFREI accent bar -->
+  <div class="efrei-accent-bar" aria-hidden="true"></div>
+
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loadingOverlay" role="status" aria-label="Chargement en cours">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <span class="loading-text">Connexion au flux de marche...</span>
+  </div>
+
+  <!-- Header -->
+  <header class="header" role="banner">
+    <div class="header-left">
+      <div class="logo" aria-label="Crypto Monitor">
+        <svg class="logo-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M10 2L17.32 6V14L10 18L2.68 14V6L10 2Z" stroke="#F59E0B" stroke-width="1.5" fill="rgba(245,158,11,0.08)"/>
+          <circle cx="10" cy="10" r="2.5" fill="#F59E0B"/>
+        </svg>
+        <div>
+          <div class="logo-text" data-i18n="title">CRYPTO MONITOR</div>
+          <div class="logo-subtitle">M1 EFREI - Real-Time Engineering</div>
+        </div>
+      </div>
+      <div class="header-badge" aria-label="Diffusion en direct" data-i18n="live">EN DIRECT</div>
+    </div>
+    <div class="header-center">
+      <time class="clock" id="clock" aria-label="Heure actuelle">00:00:00</time>
+    </div>
+    <div class="header-right">
+      <div class="connection-status" id="connectionStatus" role="status" aria-live="polite">
+        <span class="status-dot" id="statusDot" aria-hidden="true"></span>
+        <span class="status-label" id="statusLabel" data-i18n="connecting">Connexion...</span>
+      </div>
+      <div class="lang-switcher" role="group" aria-label="Choix de la langue">
+        <button class="lang-btn active" data-lang="fr" onclick="switchLang('fr')" aria-pressed="true">FR</button>
+        <span class="lang-sep" aria-hidden="true">|</span>
+        <button class="lang-btn" data-lang="en" onclick="switchLang('en')" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="main" role="main">
+
+    <!-- Symbol selector -->
+    <nav class="symbol-tabs" id="symbolTabs" role="tablist" aria-label="Paires de crypto-monnaies">
+      <button class="tab active" data-symbol="BTC-USDT" role="tab" aria-selected="true">
+        <img src="icons/bitcoin.svg" width="18" height="18" alt="" class="tab-icon-img" aria-hidden="true">
+        BTC-USDT
+      </button>
+      <button class="tab" data-symbol="ETH-USDT" role="tab" aria-selected="false">
+        <img src="icons/ethereum.svg" width="18" height="18" alt="" class="tab-icon-img" aria-hidden="true">
+        ETH-USDT
+      </button>
+      <button class="tab" data-symbol="BTC-USD" role="tab" aria-selected="false">
+        <img src="icons/coinbase.svg" width="18" height="18" alt="" class="tab-icon-img" aria-hidden="true">
+        BTC-USD
+      </button>
+    </nav>
+
+    <!-- Hero price card -->
+    <section class="hero-card card" aria-label="Prix actuel et metriques principales">
+      <div class="hero-left">
+        <div class="hero-symbol" id="heroSymbol">BTC-USDT</div>
+        <div class="hero-price" id="heroPrice" aria-live="polite" aria-label="Prix actuel">--,---.--</div>
+        <div class="hero-change-row">
+          <span class="change-badge neutral" id="changeBadge1m">0.00%</span>
+          <span class="change-label" data-i18n="stats.change1m">Var. 1min</span>
+          <span class="change-badge neutral" id="changeBadge5m">0.00%</span>
+          <span class="change-label" data-i18n="stats.change5m">Var. 5min</span>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="metric-item">
+          <span class="metric-label" data-i18n="price.vwap">VWAP</span>
+          <span class="metric-value" id="vwapValue">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label" data-i18n="price.sma20">SMA-20</span>
+          <span class="metric-value" id="sma20Value">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label" data-i18n="price.lastUpdate">Derniere mise a jour</span>
+          <span class="metric-value small" id="lastUpdate">-</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats row -->
+    <div class="stats-row" role="region" aria-label="Statistiques du marche">
+      <div class="stat-card card">
+        <div class="stat-label" data-i18n="stats.volume">Volume (1min)</div>
+        <div class="stat-value" id="volume1m">-</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-label" data-i18n="stats.trades">Transactions (1min)</div>
+        <div class="stat-value" id="tradeCount1m">-</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-label" data-i18n="stats.high">Haut (1min)</div>
+        <div class="stat-value positive" id="high1m">-</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-label" data-i18n="stats.low">Bas (1min)</div>
+        <div class="stat-value negative" id="low1m">-</div>
+      </div>
+    </div>
+
+    <!-- Charts + Anomaly feed -->
+    <div class="charts-grid">
+
+      <!-- Price chart -->
+      <div class="chart-card card">
+        <div class="card-header">
+          <span class="card-title" data-i18n="chart.price">Historique du prix</span>
+          <span class="card-subtitle" id="chartSymbolLabel">BTC-USDT</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="priceChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Anomaly feed -->
+      <div class="anomaly-card card">
+        <div class="card-header">
+          <span class="card-title" data-i18n="anomalies.title">Alertes anomalies</span>
+          <span class="anomaly-count-badge" id="anomalyCount">0</span>
+        </div>
+        <div class="anomaly-list" id="anomalyList">
+          <div class="anomaly-empty" data-i18n="anomalies.empty">Aucune anomalie detectee</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Volume chart -->
+    <div class="volume-card card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="chart.volume">Volume par paire (1min)</span>
+      </div>
+      <div class="chart-container chart-container--short">
+        <canvas id="volumeChart"></canvas>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer" role="contentinfo">
+    <span>
+      <span data-i18n="footer.module">Ingenierie Temps Reel - M1 EFREI</span>
+      -
+      <span data-i18n="footer.authors">Adam Beloucif, Emilien Morice</span>
+    </span>
+    <span class="footer-dot" aria-hidden="true">|</span>
+    <span id="footerStats" aria-live="polite">0 msg/s</span>
+    <span class="footer-dot" aria-hidden="true">|</span>
+    <span class="footer-kafka" aria-label="Propulse par Apache Kafka">
+      <span aria-hidden="true">&#9656;</span> Powered by Kafka 3.7
+    </span>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/main.js"></script>
+
+  <!-- Dismiss loading overlay -->
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        var o = document.getElementById('loadingOverlay');
+        if (o) o.classList.add('hidden');
+      }, 600);
+    });
+  </script>
+</body>
+</html>
