@@ -15,6 +15,9 @@
 </head>
 <body>
 
+  <!-- EFREI accent bar -->
+  <div class="efrei-accent-bar" aria-hidden="true"></div>
+
   <!-- Loading overlay -->
   <div class="loading-overlay" id="loadingOverlay" role="status" aria-label="Chargement en cours">
     <div class="loading-spinner" aria-hidden="true"></div>
@@ -25,8 +28,14 @@
   <header class="header" role="banner">
     <div class="header-left">
       <div class="logo" aria-label="Crypto Monitor">
-        <span class="logo-icon" aria-hidden="true">&#9670;</span>
-        <span class="logo-text" data-i18n="title">CRYPTO MONITOR</span>
+        <svg class="logo-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M10 2L17.32 6V14L10 18L2.68 14V6L10 2Z" stroke="#F59E0B" stroke-width="1.5" fill="rgba(245,158,11,0.08)"/>
+          <circle cx="10" cy="10" r="2.5" fill="#F59E0B"/>
+        </svg>
+        <div>
+          <div class="logo-text" data-i18n="title">CRYPTO MONITOR</div>
+          <div class="logo-subtitle">M1 EFREI - Real-Time Engineering</div>
+        </div>
       </div>
       <div class="header-badge" aria-label="Diffusion en direct" data-i18n="live">EN DIRECT</div>
     </div>
@@ -52,15 +61,15 @@
     <!-- Symbol selector -->
     <nav class="symbol-tabs" id="symbolTabs" role="tablist" aria-label="Paires de crypto-monnaies">
       <button class="tab active" data-symbol="BTC-USDT" role="tab" aria-selected="true">
-        <span class="tab-icon" aria-hidden="true">&#8383;</span>
+        <img src="icons/bitcoin.svg" width="18" height="18" alt="" class="tab-icon-img" aria-hidden="true">
         BTC-USDT
       </button>
       <button class="tab" data-symbol="ETH-USDT" role="tab" aria-selected="false">
-        <span class="tab-icon" aria-hidden="true">&#9830;</span>
+        <img src="icons/ethereum.svg" width="18" height="18" alt="" class="tab-icon-img" aria-hidden="true">
         ETH-USDT
       </button>
       <button class="tab" data-symbol="BTC-USD" role="tab" aria-selected="false">
-        <span class="tab-icon" aria-hidden="true">&#8383;</span>
+        <img src="icons/coinbase.svg" width="18" height="18" alt="" class="tab-icon-img" aria-hidden="true">
         BTC-USD
       </button>
     </nav>

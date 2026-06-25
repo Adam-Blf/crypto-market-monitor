@@ -1,1165 +1,522 @@
+﻿"""
+Crypto Market Monitor - Presentation PPTX v2
+EFREI branding officiel : navy #163767, rose #ff43b8, bleu #3653a0
+Principes presentation-design : massive headlines, section labels, progress bar, minimal text
 """
-Crypto Market Monitor - PPTX Presentation Generator
-Authors: Adam Beloucif, Emilien Morice
-M1 Data Engineering & IA, EFREI Paris
-Module: Real-Time Engineering 2025-2026
-"""
-
-import os
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
-from pptx.oxml.ns import qn
-from lxml import etree
+import os, math
 
+BASE = os.path.dirname(os.path.abspath(__file__))
+OUT  = os.path.join(BASE, "crypto-market-monitor.pptx")
+LOGO = os.path.join(BASE, "efrei-logo.png")
 
-# ── Color palette ──────────────────────────────────────────────────────────
-C_NAVY   = RGBColor(0x0F, 0x17, 0x2A)
-C_AMBER  = RGBColor(0xF5, 0x9E, 0x0B)
-C_PURPLE = RGBColor(0x8B, 0x5C, 0xF6)
-C_WHITE  = RGBColor(0xF8, 0xFA, 0xFC)
-C_MUTED  = RGBColor(0x94, 0xA3, 0xB8)
-C_GREEN  = RGBColor(0x10, 0xB9, 0x81)
-C_RED    = RGBColor(0xEF, 0x44, 0x44)
-C_CARD   = RGBColor(0x1E, 0x29, 0x3B)
-C_DARK   = RGBColor(0x0D, 0x14, 0x22)
+# ── EFREI Brand palette ──────────────────────────────────────────
+BG         = RGBColor(0x0B, 0x1B, 0x34)   # near-black navy
+NAVY       = RGBColor(0x16, 0x37, 0x67)   # --bleuFonce
+ROSE       = RGBColor(0xFF, 0x43, 0xB8)   # --rose  (accent principal EFREI)
+BLUE       = RGBColor(0x36, 0x53, 0xA0)   # --bleuClair
+BLUE2      = RGBColor(0x33, 0x7A, 0xB6)   # --bleuTresClair
+PURPLE     = RGBColor(0x95, 0x56, 0x9E)   # --roseFonce
+WHITE      = RGBColor(0xFF, 0xFF, 0xFF)
+MUTED      = RGBColor(0x94, 0xA3, 0xB8)
+CARD       = RGBColor(0x16, 0x37, 0x67)   # navy card bg
+CARD2      = RGBColor(0x1E, 0x2E, 0x4A)
+GREEN      = RGBColor(0x10, 0xB9, 0x81)
+DARK_CARD  = RGBColor(0x0D, 0x1F, 0x3C)
+
+# Section accent colors (presentation-design spec)
+SEC = {
+    "intro":  ROSE,
+    "archi":  BLUE,
+    "kafka":  PURPLE,
+    "svc":    BLUE2,
+    "dash":   ROSE,
+    "secu":   RGBColor(0xF8, 0x71, 0x71),
+    "i18n":   RGBColor(0x34, 0xD3, 0x99),
+    "deploy": BLUE,
+    "bilan":  ROSE,
+}
 
 TOTAL_SLIDES = 12
 
+prs = Presentation()
+prs.slide_width  = Inches(13.33)
+prs.slide_height = Inches(7.5)
 
-# ── Helpers ─────────────────────────────────────────────────────────────────
 
-def set_slide_bg(slide, rgb: RGBColor):
-    """Set solid background color on a slide."""
-    background = slide.background
-    fill = background.fill
+def new_slide():
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    fill = s.background.fill
     fill.solid()
-    fill.fore_color.rgb = rgb
+    fill.fore_color.rgb = BG
+    return s
 
 
-def add_textbox(slide, text, left, top, width, height,
-                font_size=18, bold=False, color=None,
-                align=PP_ALIGN.LEFT, italic=False, font_name="Calibri"):
-    if color is None:
-        color = C_WHITE
-    txBox = slide.shapes.add_textbox(
-        Inches(left), Inches(top), Inches(width), Inches(height)
-    )
-    tf = txBox.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.alignment = align
+def rect(slide, l, t, w, h, color=CARD, alpha=None):
+    sh = slide.shapes.add_shape(1, Inches(l), Inches(t), Inches(w), Inches(h))
+    sh.fill.solid(); sh.fill.fore_color.rgb = color
+    sh.line.fill.background()
+    return sh
+
+
+def txt(slide, text, l, t, w, h,
+        size=14, bold=False, color=WHITE, align=PP_ALIGN.LEFT, italic=False):
+    tb = slide.shapes.add_textbox(Inches(l), Inches(t), Inches(w), Inches(h))
+    tf = tb.text_frame; tf.word_wrap = True
+    p = tf.paragraphs[0]; p.alignment = align
     run = p.add_run()
-    run.text = text
-    run.font.size = Pt(font_size)
-    run.font.bold = bold
-    run.font.italic = italic
-    run.font.color.rgb = color
-    run.font.name = font_name
-    return txBox
-
-
-def add_multiline_textbox(slide, lines, left, top, width, height,
-                          font_size=14, color=None, line_spacing_pt=6,
-                          font_name="Calibri"):
-    """Add a textbox with multiple paragraphs."""
-    if color is None:
-        color = C_WHITE
-    txBox = slide.shapes.add_textbox(
-        Inches(left), Inches(top), Inches(width), Inches(height)
-    )
-    tf = txBox.text_frame
-    tf.word_wrap = True
-    for i, line in enumerate(lines):
-        if i == 0:
-            p = tf.paragraphs[0]
-        else:
-            p = tf.add_paragraph()
-        run = p.add_run()
-        run.text = line
-        run.font.size = Pt(font_size)
-        run.font.color.rgb = color
-        run.font.name = font_name
-    return txBox
-
-
-def add_slide_title(slide, title):
-    add_textbox(slide, title, 0.5, 0.15, 12.3, 0.9,
-                font_size=28, bold=True, color=C_AMBER, align=PP_ALIGN.LEFT)
-
-
-def add_footer(slide, slide_num):
-    line_box = slide.shapes.add_textbox(
-        Inches(0.5), Inches(7.15), Inches(12.33), Inches(0.1)
-    )
-    fill = line_box.fill
-    fill.solid()
-    fill.fore_color.rgb = C_AMBER
-
-    add_textbox(slide,
-                f"M1 EFREI - Real-Time Engineering 2025-2026  |  Adam Beloucif, Emilien Morice  |  {slide_num}/{TOTAL_SLIDES}",
-                0.5, 7.25, 12.33, 0.22, font_size=8, color=C_MUTED, align=PP_ALIGN.CENTER)
-
-
-def add_card(slide, left, top, width, height, bg: RGBColor = None):
-    """Add a rounded-corner card rectangle."""
-    if bg is None:
-        bg = C_CARD
-    shape = slide.shapes.add_shape(
-        1,  # MSO_SHAPE_TYPE.RECTANGLE
-        Inches(left), Inches(top), Inches(width), Inches(height)
-    )
-    shape.fill.solid()
-    shape.fill.fore_color.rgb = bg
-    shape.line.color.rgb = RGBColor(0x2D, 0x3D, 0x55)
-    shape.line.width = Pt(0.75)
-    return shape
-
-
-def add_highlight_bar(slide, left, top, width, height, color: RGBColor = None):
-    """Thin accent bar."""
-    if color is None:
-        color = C_AMBER
-    shape = slide.shapes.add_shape(
-        1,
-        Inches(left), Inches(top), Inches(width), Inches(height)
-    )
-    shape.fill.solid()
-    shape.fill.fore_color.rgb = color
-    shape.line.fill.background()
-    return shape
-
-
-# ── Slide factories ──────────────────────────────────────────────────────────
-
-def slide_01_title(prs):
-    """Slide 1: Title."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank
-    set_slide_bg(slide, C_DARK)
-
-    # Amber gradient bar top
-    add_highlight_bar(slide, 0, 0, 13.33, 0.08, C_AMBER)
-
-    # Purple accent left bar
-    add_highlight_bar(slide, 0, 0.08, 0.08, 7.42, C_PURPLE)
-
-    # Main title
-    add_textbox(slide, "Crypto Market Monitor",
-                0.5, 1.0, 12.33, 1.5,
-                font_size=40, bold=True, color=C_AMBER, align=PP_ALIGN.CENTER)
-
-    # Subtitle
-    add_textbox(slide, "Systeme de surveillance de marches crypto en temps reel",
-                0.5, 2.5, 12.33, 0.8,
-                font_size=20, bold=False, color=C_WHITE, align=PP_ALIGN.CENTER, italic=True)
-
-    # Separator line
-    add_highlight_bar(slide, 3.5, 3.45, 6.33, 0.04, C_PURPLE)
-
-    # Authors
-    add_textbox(slide, "Adam Beloucif  -  Emilien Morice",
-                0.5, 3.65, 12.33, 0.55,
-                font_size=16, bold=True, color=C_WHITE, align=PP_ALIGN.CENTER)
-
-    # Info block
-    add_textbox(slide, "M1 Data Engineering & IA  -  EFREI Paris",
-                0.5, 4.3, 12.33, 0.45,
-                font_size=14, color=C_MUTED, align=PP_ALIGN.CENTER)
-
-    add_textbox(slide, "Module: Real-Time Engineering  -  Annee 2025-2026",
-                0.5, 4.75, 12.33, 0.45,
-                font_size=14, color=C_MUTED, align=PP_ALIGN.CENTER)
-
-    # Tech tags row
-    tags = ["Kafka KRaft", "TypeScript", "Node.js", "WebSocket", "Docker"]
-    tag_w = 1.8
-    tag_x_start = (13.33 - len(tags) * tag_w - (len(tags) - 1) * 0.15) / 2
-    for i, tag in enumerate(tags):
-        x = tag_x_start + i * (tag_w + 0.15)
-        add_card(slide, x, 5.7, tag_w, 0.5, bg=RGBColor(0x1E, 0x29, 0x3B))
-        add_textbox(slide, tag, x, 5.7, tag_w, 0.5,
-                    font_size=11, bold=True, color=C_AMBER, align=PP_ALIGN.CENTER)
-
-    # Bottom bar
-    add_highlight_bar(slide, 0.08, 7.42, 13.25, 0.08, C_AMBER)
-
-
-def slide_02_contexte(prs):
-    """Slide 2: Contexte et problematique."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, C_NAVY)
-    add_highlight_bar(slide, 0, 0, 13.33, 0.06, C_AMBER)
-    add_slide_title(slide, "Contexte et Problematique")
-    add_highlight_bar(slide, 0.5, 1.1, 4.0, 0.04, C_AMBER)
-
-    context_points = [
-        ("Marches crypto volatils", "Les cryptomonnaies connaissent des variations de prix extremes en quelques secondes. Un pipeline temps reel est indispensable pour capturer ces mouvements."),
-        ("Donnees en temps reel", "Binance et Coinbase exposent des flux WebSocket publics avec des trades a haute frequence. Chaque message contient prix, volume, horodatage."),
-        ("Besoin de surveillance", "Les traders et analystes ont besoin d'indicateurs calcules en continu: VWAP, moyennes mobiles, alertes d'anomalies statistiques."),
-        ("Detection d'anomalies", "Le z-score permet d'identifier les mouvements de prix hors norme (seuil 2.5 sigma), declenchant des alertes visuelles et sonores."),
-    ]
-
-    for i, (title, body) in enumerate(context_points):
-        y = 1.3 + i * 1.3
-        add_card(slide, 0.5, y, 12.33, 1.1)
-        add_highlight_bar(slide, 0.5, y, 0.06, 1.1, C_AMBER)
-        add_textbox(slide, title, 0.75, y + 0.05, 11.5, 0.38,
-                    font_size=13, bold=True, color=C_AMBER)
-        add_textbox(slide, body, 0.75, y + 0.42, 11.5, 0.62,
-                    font_size=11, color=C_WHITE)
-
-    add_footer(slide, 2)
-
-
-def slide_03_architecture(prs):
-    """Slide 3: Architecture globale."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, C_NAVY)
-    add_highlight_bar(slide, 0, 0, 13.33, 0.06, C_AMBER)
-    add_slide_title(slide, "Architecture Globale")
-    add_highlight_bar(slide, 0.5, 1.1, 4.0, 0.04, C_AMBER)
-
-    # Architecture pipeline boxes
-    components = [
-        ("WebSocket\nBinance/Coinbase", C_GREEN, 0.35),
-        ("Ingester\nTypeScript", C_AMBER, 2.15),
-        ("Kafka\nKRaft", C_PURPLE, 3.95),
-        ("Processor\nTypeScript", C_AMBER, 5.75),
-        ("API\nExpress+Socket.IO", C_GREEN, 7.55),
-        ("Dashboard\nHTML/CSS/JS", C_RED, 9.35),
-    ]
-
-    box_w = 1.55
-    box_h = 1.15
-    y_box = 1.5
-
-    for label, color, x in components:
-        add_card(slide, x, y_box, box_w, box_h, bg=RGBColor(0x1E, 0x29, 0x3B))
-        add_highlight_bar(slide, x, y_box, box_w, 0.05, color)
-        add_textbox(slide, label, x, y_box + 0.15, box_w, box_h - 0.15,
-                    font_size=11, bold=True, color=C_WHITE, align=PP_ALIGN.CENTER)
-
-    # Arrows between boxes
-    arrows = [1.9, 3.7, 5.5, 7.3, 9.1]
-    for ax in arrows:
-        add_textbox(slide, "->", ax, y_box + 0.4, 0.25, 0.35,
-                    font_size=16, bold=True, color=C_MUTED, align=PP_ALIGN.CENTER)
-
-    # Details row
-    details = [
-        ("Port 9092\ntrades + metrics", 0.35),
-        ("Reconnexion\nautomatique", 2.15),
-        ("KRaft - no\nZookeeper", 3.95),
-        ("VWAP / SMA\nZ-score", 5.75),
-        ("REST + WS\npush live", 7.55),
-        ("Chart.js\nDark theme", 9.35),
-    ]
-    for label, x in details:
-        add_textbox(slide, label, x, 2.85, box_w, 0.6,
-                    font_size=9, color=C_MUTED, align=PP_ALIGN.CENTER)
-
-    # Data flow description
-    add_card(slide, 0.5, 3.65, 12.33, 2.6)
-    add_textbox(slide, "Flux de donnees", 0.75, 3.75, 6.0, 0.35,
-                font_size=13, bold=True, color=C_AMBER)
-    flow_lines = [
-        "1. Les exchanges Binance (BTC/USDT, ETH/USDT) et Coinbase (BTC-USD) publient des trades via WebSocket.",
-        "2. Le service Ingester consomme ces flux, normalise les messages dans une interface Trade unifiee,",
-        "   puis produit vers Kafka (topic: crypto-trades, partitionne par symbole).",
-        "3. Le Processor consomme crypto-trades, calcule VWAP, SMA-20, z-score et publie dans crypto-metrics.",
-        "4. L'API Express consomme crypto-metrics, stocke en ring buffer et pousse via Socket.IO vers les clients.",
-        "5. Le Dashboard (navigateur) recoit les updates en temps reel et met a jour les graphiques Chart.js.",
-    ]
-    for i, line in enumerate(flow_lines):
-        add_textbox(slide, line, 0.75, 4.2 + i * 0.32, 11.8, 0.32,
-                    font_size=9.5, color=C_WHITE if i == 0 or not line.startswith(" ") else C_MUTED)
-
-    add_footer(slide, 3)
-
-
-def slide_04_kafka(prs):
-    """Slide 4: Apache Kafka KRaft."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, C_NAVY)
-    add_highlight_bar(slide, 0, 0, 13.33, 0.06, C_PURPLE)
-    add_slide_title(slide, "Apache Kafka - Mode KRaft")
-    add_highlight_bar(slide, 0.5, 1.1, 4.0, 0.04, C_PURPLE)
-
-    # Left column - KRaft mode
-    add_card(slide, 0.5, 1.3, 5.8, 2.7)
-    add_textbox(slide, "Mode KRaft (sans Zookeeper)", 0.7, 1.4, 5.4, 0.4,
-                font_size=13, bold=True, color=C_PURPLE)
-    kraft_lines = [
-        "- Kafka 3.x+ integre la gestion des metadonnees",
-        "  directement (Kafka Raft Metadata Mode)",
-        "- Elimine la dependance a Apache Zookeeper",
-        "- Simplification du deploiement Docker (1 seul service)",
-        "- Latence reduite: consensus Raft integre au broker",
-        "- KAFKA_NODE_ID=1, KAFKA_PROCESS_ROLES=broker,controller",
-        "- KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093",
-    ]
-    for i, line in enumerate(kraft_lines):
-        add_textbox(slide, line, 0.7, 1.85 + i * 0.28, 5.4, 0.28,
-                    font_size=9.5, color=C_WHITE)
-
-    # Right column - Topics
-    add_card(slide, 6.63, 1.3, 6.2, 2.7)
-    add_textbox(slide, "Topics et Partitionnement", 6.83, 1.4, 5.8, 0.4,
-                font_size=13, bold=True, color=C_AMBER)
-    topics_data = [
-        ("crypto-trades", "3 partitions", "7 jours", "Messages trades bruts normalises"),
-        ("crypto-metrics", "3 partitions", "1 jour", "Metriques calculees par symbole"),
-    ]
-    add_textbox(slide, "Topic                  Partitions   Retention   Description",
-                6.83, 1.85, 5.8, 0.3, font_size=8.5, bold=True, color=C_MUTED)
-    add_highlight_bar(slide, 6.83, 2.12, 5.8, 0.02, C_MUTED)
-    for i, (t, p, r, d) in enumerate(topics_data):
-        y = 2.2 + i * 0.55
-        bg = RGBColor(0x0F, 0x17, 0x2A) if i % 2 == 0 else RGBColor(0x1A, 0x25, 0x38)
-        add_card(slide, 6.83, y, 5.8, 0.5, bg=bg)
-        add_textbox(slide, t, 6.88, y + 0.05, 1.5, 0.4, font_size=9, bold=True, color=C_AMBER)
-        add_textbox(slide, p, 8.55, y + 0.05, 1.0, 0.4, font_size=9, color=C_WHITE)
-        add_textbox(slide, r, 9.6, y + 0.05, 0.9, 0.4, font_size=9, color=C_GREEN)
-        add_textbox(slide, d, 10.55, y + 0.05, 2.0, 0.4, font_size=8, color=C_MUTED)
-
-    # Bottom row - Config details
-    add_card(slide, 0.5, 4.2, 5.8, 2.55)
-    add_textbox(slide, "Configuration Kafka (docker-compose)", 0.7, 4.3, 5.4, 0.4,
-                font_size=12, bold=True, color=C_AMBER)
-    config_lines = [
-        "KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://...",
-        "KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092",
-        "KAFKA_AUTO_CREATE_TOPICS_ENABLE: true",
-        "KAFKA_LOG_RETENTION_HOURS: 168 (7 jours)",
-        "KAFKA_NUM_PARTITIONS: 3 (par defaut)",
-        "KAFKA_DEFAULT_REPLICATION_FACTOR: 1 (single-node dev)",
-    ]
-    for i, line in enumerate(config_lines):
-        add_textbox(slide, line, 0.7, 4.78 + i * 0.3, 5.4, 0.3,
-                    font_size=9, color=C_WHITE, font_name="Courier New")
-
-    # Kafka UI
-    add_card(slide, 6.63, 4.2, 6.2, 2.55)
-    add_textbox(slide, "Kafka UI - Monitoring", 6.83, 4.3, 5.8, 0.4,
-                font_size=12, bold=True, color=C_AMBER)
-    ui_lines = [
-        "Interface web kafka-ui (provectus/kafka-ui)",
-        "Accessible sur http://localhost:8080",
-        "",
-        "Fonctionnalites:",
-        "- Visualisation des topics et partitions",
-        "- Consultation des messages en temps reel",
-        "- Monitoring des consumer groups",
-        "- Inspection des offsets et lag",
-    ]
-    for i, line in enumerate(ui_lines):
-        color = C_GREEN if line.startswith("-") else C_WHITE
-        add_textbox(slide, line, 6.83, 4.75 + i * 0.27, 5.8, 0.27,
-                    font_size=9, color=color)
-
-    add_footer(slide, 4)
-
-
-def slide_05_ingester(prs):
-    """Slide 5: Service Ingester."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, C_NAVY)
-    add_highlight_bar(slide, 0, 0, 13.33, 0.06, C_AMBER)
-    add_slide_title(slide, "Service Ingester - Collecte WebSocket")
-    add_highlight_bar(slide, 0.5, 1.1, 4.0, 0.04, C_AMBER)
-
-    # Sources
-    add_card(slide, 0.5, 1.3, 3.8, 5.45)
-    add_textbox(slide, "Sources de donnees", 0.7, 1.4, 3.4, 0.4,
-                font_size=13, bold=True, color=C_AMBER)
-    sources = [
-        ("Binance", "wss://stream.binance.com:9443", ["BTC/USDT", "ETH/USDT"], C_GREEN),
-        ("Coinbase", "wss://advanced-trade-ws.coinbase.com", ["BTC-USD"], C_PURPLE),
-    ]
-    for i, (name, url, symbols, color) in enumerate(sources):
-        y = 1.9 + i * 1.5
-        add_card(slide, 0.7, y, 3.4, 1.3, bg=RGBColor(0x0F, 0x17, 0x2A))
-        add_highlight_bar(slide, 0.7, y, 0.05, 1.3, color)
-        add_textbox(slide, name, 0.9, y + 0.05, 3.0, 0.38,
-                    font_size=12, bold=True, color=color)
-        add_textbox(slide, url, 0.9, y + 0.4, 3.0, 0.3,
-                    font_size=7.5, color=C_MUTED, font_name="Courier New")
-        add_textbox(slide, "Symboles: " + ", ".join(symbols), 0.9, y + 0.72, 3.0, 0.28,
-                    font_size=9, color=C_WHITE)
-        add_textbox(slide, "Format: JSON stream (trades)", 0.9, y + 0.98, 3.0, 0.25,
-                    font_size=8.5, color=C_MUTED)
-
-    add_textbox(slide, "Interface Trade (TypeScript):", 0.7, 4.95, 3.4, 0.35,
-                font_size=10, bold=True, color=C_AMBER)
-    trade_code = (
-        "interface Trade {\n"
-        "  symbol: string\n"
-        "  price:  number\n"
-        "  qty:    number\n"
-        "  ts:     number  // ms\n"
-        "  exchange: string\n"
-        "}"
-    )
-    add_textbox(slide, trade_code, 0.7, 5.3, 3.4, 1.35,
-                font_size=8.5, color=C_GREEN, font_name="Courier New")
-
-    # Middle - Reconnection strategy
-    add_card(slide, 4.55, 1.3, 4.1, 2.8)
-    add_textbox(slide, "Strategie de reconnexion", 4.75, 1.4, 3.7, 0.4,
-                font_size=12, bold=True, color=C_PURPLE)
-    reconnect_lines = [
-        "Backoff exponentiel avec jitter:",
-        "",
-        "delay = min(base * 2^attempt, maxDelay)",
-        "       + random(0, jitter)",
-        "",
-        "base = 1000 ms",
-        "maxDelay = 30000 ms",
-        "jitter = 1000 ms",
-        "",
-        "Avantages:",
-        "- Evite le thundering herd",
-        "- Reconnexion automatique sans",
-        "  intervention manuelle",
-        "- Logs detailles par tentative",
-    ]
-    for i, line in enumerate(reconnect_lines):
-        color = C_WHITE
-        if line.startswith("delay") or line.startswith("base") or line.startswith("max") or line.startswith("jitter"):
-            color = C_GREEN
-            font_name = "Courier New"
-        elif line.startswith("-"):
-            color = C_MUTED
-            font_name = "Calibri"
-        else:
-            font_name = "Calibri"
-        add_textbox(slide, line, 4.75, 1.88 + i * 0.25, 3.7, 0.25,
-                    font_size=9, color=color, font_name=font_name)
-
-    # Middle - Normalisation
-    add_card(slide, 4.55, 4.3, 4.1, 2.45)
-    add_textbox(slide, "Normalisation des messages", 4.75, 4.4, 3.7, 0.4,
-                font_size=12, bold=True, color=C_AMBER)
-    norm_lines = [
-        "Binance: champ 'p' = prix, 'q' = quantite",
-        "Coinbase: champ 'price', 'size'",
-        "",
-        "Converge vers Trade unifie avant",
-        "publication Kafka:",
-        "- Parsing JSON + validation",
-        "- Conversion string -> number",
-        "- Horodatage normalise en ms",
-        "- Symbol: BTC-USD -> BTC/USD",
-    ]
-    for i, line in enumerate(norm_lines):
-        color = C_MUTED if line.startswith("-") else C_WHITE
-        add_textbox(slide, line, 4.75, 4.88 + i * 0.25, 3.7, 0.25,
-                    font_size=9, color=color)
-
-    # Right - Kafka producer
-    add_card(slide, 8.9, 1.3, 3.93, 5.45)
-    add_textbox(slide, "Kafka Producer", 9.1, 1.4, 3.53, 0.4,
-                font_size=12, bold=True, color=C_AMBER)
-    producer_lines = [
-        "Library: kafkajs",
-        "Topic: crypto-trades",
-        "Partitioning: hash(symbol)",
-        "",
-        "Configuration:",
-        "  clientId: ingester",
-        "  brokers: [kafka:9092]",
-        "  retry: { retries: 5 }",
-        "",
-        "Message format:",
-        "{",
-        "  key: symbol (Buffer),",
-        "  value: JSON.stringify(",
-        "    trade",
-        "  ),",
-        "  timestamp: Date.now()",
-        "}",
-        "",
-        "Throughput mesure:",
-        "~200-500 msg/s par symbole",
-        "en conditions normales.",
-    ]
-    for i, line in enumerate(producer_lines):
-        color = C_WHITE
-        if line.strip().startswith(("clientId", "brokers", "retry", "key:", "value:", "timestamp")):
-            color = C_GREEN
-            font_name = "Courier New"
-        elif line in ("{", "}", "  ),"):
-            color = C_MUTED
-            font_name = "Courier New"
-        elif line.startswith("~"):
-            color = C_AMBER
-            font_name = "Calibri"
-        else:
-            font_name = "Calibri"
-        add_textbox(slide, line, 9.1, 1.88 + i * 0.26, 3.53, 0.26,
-                    font_size=9, color=color, font_name=font_name)
-
-    add_footer(slide, 5)
-
-
-def slide_06_processor(prs):
-    """Slide 6: Service Processor - Analytique."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, C_NAVY)
-    add_highlight_bar(slide, 0, 0, 13.33, 0.06, C_GREEN)
-    add_slide_title(slide, "Service Processor - Analytique Temps Reel")
-    add_highlight_bar(slide, 0.5, 1.1, 5.0, 0.04, C_GREEN)
-
-    # VWAP
-    add_card(slide, 0.5, 1.3, 3.9, 2.9)
-    add_textbox(slide, "VWAP - Volume Weighted Average Price", 0.7, 1.4, 3.5, 0.5,
-                font_size=11, bold=True, color=C_AMBER)
-    add_textbox(slide,
-                "VWAP = SUM(price_i * qty_i) / SUM(qty_i)",
-                0.7, 1.95, 3.5, 0.4,
-                font_size=10, bold=True, color=C_GREEN, font_name="Courier New")
-    vwap_lines = [
-        "Calcule sur la fenetre glissante",
-        "des 100 derniers trades (circular buffer).",
-        "",
-        "Indicateur cle pour evaluer si le",
-        "prix actuel est au-dessus ou en",
-        "dessous du prix moyen pondere.",
-        "",
-        "Reset partiel a chaque nouveau",
-        "trade: O(1) avec buffer circulaire.",
-    ]
-    for i, line in enumerate(vwap_lines):
-        add_textbox(slide, line, 0.7, 2.42 + i * 0.24, 3.5, 0.24,
-                    font_size=9, color=C_WHITE)
-
-    # SMA
-    add_card(slide, 4.65, 1.3, 3.9, 2.9)
-    add_textbox(slide, "SMA-20 - Moyenne Mobile Simple", 4.85, 1.4, 3.5, 0.5,
-                font_size=11, bold=True, color=C_PURPLE)
-    add_textbox(slide,
-                "SMA = (1/N) * SUM(close_i, i=t-N+1..t)",
-                4.85, 1.95, 3.5, 0.4,
-                font_size=9.5, bold=True, color=C_GREEN, font_name="Courier New")
-    sma_lines = [
-        "N = 20 periodes (trades)",
-        "Lisse les fluctuations de prix",
-        "a court terme.",
-        "",
-        "Usage: detecter la tendance",
-        "generale (bullish/bearish).",
-        "",
-        "Compare au prix actuel pour",
-        "signaler croisements notables.",
-    ]
-    for i, line in enumerate(sma_lines):
-        add_textbox(slide, line, 4.85, 2.42 + i * 0.24, 3.5, 0.24,
-                    font_size=9, color=C_WHITE)
-
-    # Z-score
-    add_card(slide, 8.8, 1.3, 4.03, 2.9)
-    add_textbox(slide, "Z-Score - Detection d'Anomalies", 9.0, 1.4, 3.63, 0.5,
-                font_size=11, bold=True, color=C_RED)
-    add_textbox(slide,
-                "z = (x - mean) / std",
-                9.0, 1.95, 3.63, 0.4,
-                font_size=10, bold=True, color=C_GREEN, font_name="Courier New")
-    zscore_lines = [
-        "Seuil d'alerte: |z| > 2.5",
-        "Fenetre: 50 derniers prix",
-        "",
-        "Signification:",
-        "z > 2.5  -> spike haussier",
-        "z < -2.5 -> spike baissier",
-        "",
-        "Alerte envoyee dans le topic",
-        "crypto-metrics avec flag",
-        "isAnomaly: true",
-    ]
-    for i, line in enumerate(zscore_lines):
-        color = C_RED if ("spike" in line or "Alerte" in line) else C_WHITE
-        add_textbox(slide, line, 9.0, 2.42 + i * 0.24, 3.63, 0.24,
-                    font_size=9, color=color)
-
-    # Bottom - Other metrics + circular buffer
-    add_card(slide, 0.5, 4.38, 6.1, 2.37)
-    add_textbox(slide, "Autres indicateurs calcules", 0.7, 4.48, 5.7, 0.4,
-                font_size=12, bold=True, color=C_AMBER)
-    other_metrics = [
-        ("priceChange1m", "Variation du prix sur 1 minute en %"),
-        ("priceChange5m", "Variation du prix sur 5 minutes en %"),
-        ("volume1m", "Volume cumule sur 1 minute"),
-        ("tradeCount1m", "Nombre de trades sur 1 minute"),
-        ("high24h / low24h", "Plus haut/bas sur les dernieres 24h"),
-    ]
-    for i, (name, desc) in enumerate(other_metrics):
-        y = 4.96 + i * 0.34
-        add_textbox(slide, name, 0.7, y, 2.0, 0.32,
-                    font_size=9, bold=True, color=C_GREEN, font_name="Courier New")
-        add_textbox(slide, desc, 2.75, y, 3.6, 0.32,
-                    font_size=9, color=C_MUTED)
-
-    add_card(slide, 6.85, 4.38, 5.98, 2.37)
-    add_textbox(slide, "Circular Buffer - Architecture", 7.05, 4.48, 5.58, 0.4,
-                font_size=12, bold=True, color=C_PURPLE)
-    cb_lines = [
-        "Stockage des N derniers trades en memoire:",
-        "class CircularBuffer<T> {",
-        "  private buffer: T[]",
-        "  private head = 0",
-        "  push(item: T): void  // O(1)",
-        "  getAll(): T[]        // O(N)",
-        "}",
-        "",
-        "Avantage: pas de shift() couteux (O(N)),",
-        "empreinte memoire constante.",
-    ]
-    for i, line in enumerate(cb_lines):
-        color = C_GREEN if any(c in line for c in ["class", "private", "push", "get", "}", "{"]) else C_WHITE
-        font_name = "Courier New" if any(c in line for c in ["class", "private", "push", "get", "}", "{", "T>"]) else "Calibri"
-        add_textbox(slide, line, 7.05, 4.96 + i * 0.25, 5.58, 0.25,
-                    font_size=9, color=color, font_name=font_name)
-
-    add_footer(slide, 6)
-
-
-def slide_07_api(prs):
-    """Slide 7: Service API."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, C_NAVY)
-    add_highlight_bar(slide, 0, 0, 13.33, 0.06, C_AMBER)
-    add_slide_title(slide, "Service API - Express + Socket.IO")
-    add_highlight_bar(slide, 0.5, 1.1, 4.0, 0.04, C_AMBER)
-
-    # REST endpoints table
-    add_textbox(slide, "Endpoints REST", 0.5, 1.25, 6.0, 0.38,
-                font_size=13, bold=True, color=C_AMBER)
-    endpoints = [
-        ("GET", "/api/health", "Healthcheck du service API"),
-        ("GET", "/api/symbols", "Liste des symboles surveilles"),
-        ("GET", "/api/metrics/:symbol", "Dernieres metriques pour un symbole"),
-        ("GET", "/api/history/:symbol", "Historique ring buffer (500 entrees)"),
-        ("GET", "/api/anomalies", "Alertes anomalies recentes (z-score)"),
-    ]
-    header_y = 1.7
-    add_card(slide, 0.5, header_y, 7.3, 0.38, bg=RGBColor(0x1E, 0x29, 0x3B))
-    add_textbox(slide, "Methode", 0.6, header_y + 0.05, 0.9, 0.28,
-                font_size=9, bold=True, color=C_MUTED)
-    add_textbox(slide, "Route", 1.6, header_y + 0.05, 2.5, 0.28,
-                font_size=9, bold=True, color=C_MUTED)
-    add_textbox(slide, "Description", 4.2, header_y + 0.05, 3.5, 0.28,
-                font_size=9, bold=True, color=C_MUTED)
-
-    for i, (method, route, desc) in enumerate(endpoints):
-        y = 2.15 + i * 0.4
-        bg = RGBColor(0x0F, 0x17, 0x2A) if i % 2 == 0 else RGBColor(0x17, 0x20, 0x33)
-        add_card(slide, 0.5, y, 7.3, 0.38, bg=bg)
-        method_color = C_GREEN if method == "GET" else C_AMBER
-        add_textbox(slide, method, 0.6, y + 0.05, 0.9, 0.28,
-                    font_size=9, bold=True, color=method_color)
-        add_textbox(slide, route, 1.6, y + 0.05, 2.5, 0.28,
-                    font_size=9, color=C_AMBER, font_name="Courier New")
-        add_textbox(slide, desc, 4.2, y + 0.05, 3.5, 0.28,
-                    font_size=9, color=C_WHITE)
-
-    # Socket.IO events
-    add_textbox(slide, "Evenements Socket.IO", 0.5, 4.25, 6.0, 0.38,
-                font_size=13, bold=True, color=C_PURPLE)
-    events = [
-        ("subscribe", "Client -> Serveur", "S'abonner a un symbole"),
-        ("unsubscribe", "Client -> Serveur", "Se desabonner d'un symbole"),
-        ("metrics", "Serveur -> Client", "Mise a jour des metriques (push)"),
-        ("anomaly", "Serveur -> Client", "Alerte anomalie detectee"),
-        ("error", "Serveur -> Client", "Erreur de traitement"),
-    ]
-    hdr2_y = 4.7
-    add_card(slide, 0.5, hdr2_y, 7.3, 0.38, bg=RGBColor(0x1E, 0x29, 0x3B))
-    add_textbox(slide, "Evenement", 0.6, hdr2_y + 0.05, 1.7, 0.28,
-                font_size=9, bold=True, color=C_MUTED)
-    add_textbox(slide, "Direction", 2.4, hdr2_y + 0.05, 1.7, 0.28,
-                font_size=9, bold=True, color=C_MUTED)
-    add_textbox(slide, "Description", 4.2, hdr2_y + 0.05, 3.5, 0.28,
-                font_size=9, bold=True, color=C_MUTED)
-
-    for i, (event, direction, desc) in enumerate(events):
-        y = 5.15 + i * 0.38
-        bg = RGBColor(0x0F, 0x17, 0x2A) if i % 2 == 0 else RGBColor(0x17, 0x20, 0x33)
-        add_card(slide, 0.5, y, 7.3, 0.36, bg=bg)
-        add_textbox(slide, event, 0.6, y + 0.05, 1.7, 0.26,
-                    font_size=9, color=C_AMBER, font_name="Courier New")
-        dir_color = C_GREEN if "Serveur ->" in direction else C_PURPLE
-        add_textbox(slide, direction, 2.4, y + 0.05, 1.7, 0.26,
-                    font_size=8.5, color=dir_color)
-        add_textbox(slide, desc, 4.2, y + 0.05, 3.5, 0.26,
-                    font_size=9, color=C_WHITE)
-
-    # Right column - Ring buffer + CORS
-    add_card(slide, 8.05, 1.25, 4.78, 3.2)
-    add_textbox(slide, "Ring Buffer par symbole", 8.25, 1.35, 4.38, 0.4,
-                font_size=12, bold=True, color=C_GREEN)
-    rb_lines = [
-        "Chaque symbole dispose d'un buffer",
-        "circulaire de 500 metriques en memoire.",
-        "",
-        "Permet de servir l'historique sans",
-        "persistance base de donnees.",
-        "",
-        "const ringBuffers = new Map<",
-        "  string,",
-        "  CircularBuffer<Metrics>",
-        ">()  // keyed by symbol",
-        "",
-        "A chaque message Kafka: push() O(1)",
-        "A chaque requete /history: getAll()",
-    ]
-    for i, line in enumerate(rb_lines):
-        color = C_WHITE
-        fn = "Calibri"
-        if any(kw in line for kw in ["const", "Map<", "string,", ">()", "CircularBuffer"]):
-            color = C_GREEN
-            fn = "Courier New"
-        add_textbox(slide, line, 8.25, 1.83 + i * 0.25, 4.38, 0.25,
-                    font_size=9, color=color, font_name=fn)
-
-    add_card(slide, 8.05, 4.62, 4.78, 2.13)
-    add_textbox(slide, "CORS et Securite", 8.25, 4.72, 4.38, 0.4,
-                font_size=12, bold=True, color=C_RED)
-    cors_lines = [
-        "- CORS: origines whitelist strictes",
-        "- Helmet: headers HTTP securises",
-        "- Rate limiting: 100 req/min/IP",
-        "- Validation Zod: env vars au demarrage",
-        "- Socket.IO: validation namespace",
-        "- Non-root Docker: user node:node",
-    ]
-    for i, line in enumerate(cors_lines):
-        add_textbox(slide, line, 8.25, 5.2 + i * 0.28, 4.38, 0.28,
-                    font_size=9.5, color=C_MUTED)
-
-    add_footer(slide, 7)
-
-
-def slide_08_dashboard(prs):
-    """Slide 8: Dashboard."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, C_NAVY)
-    add_highlight_bar(slide, 0, 0, 13.33, 0.06, C_AMBER)
-    add_slide_title(slide, "Dashboard - Interface Temps Reel")
-    add_highlight_bar(slide, 0.5, 1.1, 4.0, 0.04, C_AMBER)
-
-    # Dashboard mockup (text-based)
-    add_card(slide, 0.5, 1.3, 7.7, 5.45, bg=RGBColor(0x0D, 0x14, 0x22))
-    add_highlight_bar(slide, 0.5, 1.3, 7.7, 0.06, C_AMBER)
-
-    add_textbox(slide, "[ Crypto Market Monitor ]  BTC/USDT  ETH/USDT  BTC-USD",
-                0.65, 1.4, 7.4, 0.32, font_size=9, color=C_AMBER, font_name="Courier New")
-
-    add_card(slide, 0.65, 1.8, 2.2, 0.85, bg=RGBColor(0x1A, 0x25, 0x38))
-    add_textbox(slide, "PRIX ACTUEL", 0.75, 1.85, 2.0, 0.25,
-                font_size=7, color=C_MUTED)
-    add_textbox(slide, "$43,210.50", 0.75, 2.1, 2.0, 0.45,
-                font_size=16, bold=True, color=C_GREEN, font_name="Courier New")
-
-    add_card(slide, 3.05, 1.8, 2.2, 0.85, bg=RGBColor(0x1A, 0x25, 0x38))
-    add_textbox(slide, "VWAP", 3.15, 1.85, 2.0, 0.25,
-                font_size=7, color=C_MUTED)
-    add_textbox(slide, "$43,089.20", 3.15, 2.1, 2.0, 0.45,
-                font_size=16, bold=True, color=C_AMBER, font_name="Courier New")
-
-    add_card(slide, 5.45, 1.8, 2.55, 0.85, bg=RGBColor(0x1A, 0x25, 0x38))
-    add_textbox(slide, "SMA-20", 5.55, 1.85, 2.35, 0.25,
-                font_size=7, color=C_MUTED)
-    add_textbox(slide, "$42,950.75", 5.55, 2.1, 2.35, 0.45,
-                font_size=16, bold=True, color=C_PURPLE, font_name="Courier New")
-
-    # Chart representation
-    add_card(slide, 0.65, 2.8, 7.3, 2.4, bg=RGBColor(0x0F, 0x17, 0x2A))
-    add_textbox(slide, "Prix (BTC/USDT) - Chart.js Line + Volume Bars",
-                0.75, 2.88, 7.1, 0.28, font_size=8, color=C_MUTED)
-
-    chart_line = "43500 |              *                                    "
-    chart_line2 = "43000 |         *       *   *  *  *  *                    "
-    chart_line3 = "42500 |   *  *                       *  *  *  *  *  *    "
-    chart_line4 = "42000 +--------------------------------------------->>   "
-    add_textbox(slide, chart_line, 0.75, 3.25, 7.1, 0.25, font_size=7.5, color=C_GREEN, font_name="Courier New")
-    add_textbox(slide, chart_line2, 0.75, 3.5, 7.1, 0.25, font_size=7.5, color=C_GREEN, font_name="Courier New")
-    add_textbox(slide, chart_line3, 0.75, 3.75, 7.1, 0.25, font_size=7.5, color=C_GREEN, font_name="Courier New")
-    add_textbox(slide, chart_line4, 0.75, 4.0, 7.1, 0.25, font_size=7.5, color=C_MUTED, font_name="Courier New")
-
-    # Anomaly feed
-    add_card(slide, 0.65, 5.35, 7.3, 1.25, bg=RGBColor(0x1A, 0x10, 0x10))
-    add_textbox(slide, "!! ANOMALIE DETECTEE  BTC/USDT  z-score: 3.12  Prix: $43,210  14:32:07",
-                0.75, 5.45, 7.1, 0.3, font_size=8.5, color=C_RED, font_name="Courier New")
-    add_textbox(slide, "!! ANOMALIE DETECTEE  ETH/USDT  z-score: 2.78  Prix: $2,890   14:31:55",
-                0.75, 5.78, 7.1, 0.3, font_size=8.5, color=C_AMBER, font_name="Courier New")
-    add_textbox(slide, "[son AudioContext active sur anomalie]",
-                0.75, 6.1, 7.1, 0.35, font_size=8, color=C_MUTED, font_name="Courier New")
-
-    # Right column - Tech stack
-    add_card(slide, 8.45, 1.3, 4.38, 5.45)
-    add_textbox(slide, "Stack Frontend", 8.65, 1.4, 3.98, 0.4,
-                font_size=13, bold=True, color=C_AMBER)
-
-    stack_items = [
-        ("HTML/CSS/JS vanilla", "Pas de framework - bundle minimal"),
-        ("Chart.js", "Graphiques temps reel (line + bar)"),
-        ("Socket.IO Client", "Reception push depuis l'API"),
-        ("CSS Variables", "Theming dark mode coherent"),
-        ("AudioContext API", "Beep sur detection anomalie"),
-        ("Glassmorphism", "Cards semi-transparentes (backdrop-blur)"),
-        ("CSS Grid/Flex", "Layout responsive adaptatif"),
-    ]
-    for i, (tech, desc) in enumerate(stack_items):
-        y = 1.95 + i * 0.52
-        add_card(slide, 8.65, y, 3.98, 0.45, bg=RGBColor(0x0F, 0x17, 0x2A))
-        add_textbox(slide, tech, 8.75, y + 0.04, 1.55, 0.37,
-                    font_size=9.5, bold=True, color=C_AMBER)
-        add_textbox(slide, desc, 10.35, y + 0.04, 2.18, 0.37,
-                    font_size=8.5, color=C_MUTED)
-
-    add_textbox(slide, "i18n FR/EN integre", 8.65, 5.7, 3.98, 0.3,
-                font_size=10, bold=True, color=C_PURPLE)
-    add_textbox(slide, "Bascule de langue sans rechargement, persistance localStorage",
-                8.65, 6.0, 3.98, 0.45, font_size=8.5, color=C_WHITE)
-
-    add_footer(slide, 8)
-
-
-def slide_09_securite(prs):
-    """Slide 9: Securite."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, C_NAVY)
-    add_highlight_bar(slide, 0, 0, 13.33, 0.06, C_RED)
-    add_slide_title(slide, "Securite - Mesures et Durcissement")
-    add_highlight_bar(slide, 0.5, 1.1, 4.0, 0.04, C_RED)
-
-    categories = [
-        ("HTTP & API", C_RED, [
-            "helmet: Content-Security-Policy, X-Frame-Options,",
-            "  HSTS, X-Content-Type-Options",
-            "express-rate-limit: 100 req/min par IP",
-            "CORS: origines autorisees explicites (whitelist)",
-            "Pas de stack trace exposee au client HTTP",
-        ]),
-        ("Validation & Env", C_AMBER, [
-            "Zod: validation stricte des variables d'env",
-            "  au demarrage (echec fast-fail si manquante)",
-            "Aucun secret en dur dans le code source",
-            "Variables sensibles via .env (gitignore)",
-            "Types TypeScript stricts (noImplicitAny: true)",
-        ]),
-        ("Docker & Infra", C_GREEN, [
-            "Containers non-root: USER node:node",
-            "Images Alpine/Distroless: surface d'attaque reduite",
-            "Healthchecks sur chaque service",
-            "Reseau Docker isole (bridge interne)",
-            "Pas de ports inutiles exposes vers l'hote",
-        ]),
-        ("Donnees & Connexions", C_PURPLE, [
-            "WebSocket: reconnexion avec backoff exponentiel",
-            "Kafka: pas d'auth en dev local (acceptable)",
-            "Ring buffers: pas de persistance disque de donnees brutes",
-            "Logs: sans donnees sensibles utilisateur",
-            "OWASP Top 10: verification XSS, injection, IDOR",
-        ]),
-    ]
-
-    for i, (cat, color, items) in enumerate(categories):
-        col = i % 2
-        row = i // 2
-        x = 0.5 + col * 6.45
-        y = 1.3 + row * 3.15
-        add_card(slide, x, y, 6.2, 2.9)
-        add_highlight_bar(slide, x, y, 0.08, 2.9, color)
-        add_textbox(slide, cat, x + 0.25, y + 0.1, 5.7, 0.42,
-                    font_size=13, bold=True, color=color)
-        for j, item in enumerate(items):
-            add_textbox(slide, item, x + 0.25, y + 0.65 + j * 0.42, 5.8, 0.42,
-                        font_size=9.5, color=C_WHITE if not item.startswith(" ") else C_MUTED)
-
-    add_footer(slide, 9)
-
-
-def slide_10_i18n(prs):
-    """Slide 10: Multilinguisme i18n."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, C_NAVY)
-    add_highlight_bar(slide, 0, 0, 13.33, 0.06, C_PURPLE)
-    add_slide_title(slide, "Multilinguisme - Module i18n FR/EN")
-    add_highlight_bar(slide, 0.5, 1.1, 4.0, 0.04, C_PURPLE)
-
-    # Architecture
-    add_card(slide, 0.5, 1.3, 5.5, 5.45)
-    add_textbox(slide, "Architecture i18n", 0.7, 1.4, 5.1, 0.4,
-                font_size=13, bold=True, color=C_PURPLE)
-    arch_lines = [
-        "Module: dashboard/js/i18n.js",
-        "",
-        "Principe:",
-        "- Attribut data-i18n sur chaque element HTML",
-        "- Dictionnaire JS par langue (fr, en)",
-        "- Fonction t(key) retourne la traduction",
-        "- Bascule sans rechargement de page",
-        "- Langue persistee en localStorage",
-        "",
-        "Exemple HTML:",
-        '<span data-i18n="price">Prix</span>',
-        "",
-        "Exemple JS:",
-        "document.querySelectorAll('[data-i18n]')",
-        "  .forEach(el => {",
-        "    el.textContent = t(el.dataset.i18n)",
-        "  })",
-        "",
-        "Langues supportees: FR (defaut), EN",
-        "Clef manquante: fallback vers FR",
-    ]
-    for i, line in enumerate(arch_lines):
-        color = C_WHITE
-        fn = "Calibri"
-        if line.startswith("<") or "querySelectorAll" in line or "forEach" in line or "el.textContent" in line or "}" in line or "el.dataset" in line:
-            color = C_GREEN
-            fn = "Courier New"
-        elif line.startswith("- "):
-            color = C_MUTED
-        add_textbox(slide, line, 0.7, 1.9 + i * 0.26, 5.1, 0.26,
-                    font_size=9, color=color, font_name=fn)
-
-    # Translation keys table
-    add_card(slide, 6.25, 1.3, 6.58, 5.45)
-    add_textbox(slide, "Cles de traduction (extrait)", 6.45, 1.4, 6.18, 0.4,
-                font_size=13, bold=True, color=C_AMBER)
-
-    keys = [
-        ("Cle", "FR", "EN"),
-        ("title", "Surveillance Crypto", "Crypto Monitor"),
-        ("price", "Prix actuel", "Current price"),
-        ("volume", "Volume", "Volume"),
-        ("anomaly", "Anomalie detectee", "Anomaly detected"),
-        ("vwap", "VWAP", "VWAP"),
-        ("sma", "Moyenne mobile 20", "Moving avg 20"),
-        ("change1m", "Variation 1 min", "1 min change"),
-        ("change5m", "Variation 5 min", "5 min change"),
-        ("lang_toggle", "EN", "FR"),
-        ("status_connected", "Connecte", "Connected"),
-        ("status_disconnected", "Deconnecte", "Disconnected"),
-        ("last_update", "Derniere mise a jour", "Last update"),
-    ]
-
-    for i, (key, fr, en) in enumerate(keys):
-        y = 1.85 + i * 0.35
-        if i == 0:
-            bg = RGBColor(0x1E, 0x29, 0x3B)
-            key_color = C_MUTED
-            fr_color = C_MUTED
-            en_color = C_MUTED
-            bold = True
-        else:
-            bg = RGBColor(0x0F, 0x17, 0x2A) if i % 2 else RGBColor(0x17, 0x20, 0x33)
-            key_color = C_AMBER
-            fr_color = C_WHITE
-            en_color = C_GREEN
-            bold = False
-        add_card(slide, 6.45, y, 6.18, 0.33, bg=bg)
-        add_textbox(slide, key, 6.5, y + 0.03, 1.6, 0.27,
-                    font_size=9, bold=bold, color=key_color, font_name="Courier New")
-        add_textbox(slide, fr, 8.2, y + 0.03, 2.2, 0.27,
-                    font_size=9, bold=bold, color=fr_color)
-        add_textbox(slide, en, 10.5, y + 0.03, 2.0, 0.27,
-                    font_size=9, bold=bold, color=en_color)
-
-    add_footer(slide, 10)
-
-
-def slide_11_docker(prs):
-    """Slide 11: Deploiement Docker."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, C_NAVY)
-    add_highlight_bar(slide, 0, 0, 13.33, 0.06, C_AMBER)
-    add_slide_title(slide, "Deploiement - Docker Compose")
-    add_highlight_bar(slide, 0.5, 1.1, 4.0, 0.04, C_AMBER)
-
-    # Services table
-    add_textbox(slide, "Services Docker Compose", 0.5, 1.25, 8.0, 0.38,
-                font_size=13, bold=True, color=C_AMBER)
-
-    services = [
-        ("kafka", "confluentinc/cp-kafka:7.6", "9092:9092", "Broker Kafka en mode KRaft"),
-        ("kafka-ui", "provectus/kafka-ui:latest", "8080:8080", "Interface web monitoring Kafka"),
-        ("ingester", "node:20-alpine", "—", "Collecte WebSocket Binance + Coinbase"),
-        ("processor", "node:20-alpine", "—", "Calcul VWAP, SMA, Z-score"),
-        ("api", "node:20-alpine", "3000:3000", "API Express + Socket.IO"),
-        ("dashboard", "nginx:alpine", "8000:80", "Serve HTML/CSS/JS via nginx"),
-    ]
-
-    header_y = 1.7
-    add_card(slide, 0.5, header_y, 12.33, 0.38, bg=RGBColor(0x1E, 0x29, 0x3B))
-    for col, (text, width, x) in enumerate([
-        ("Service", 1.5, 0.6),
-        ("Image", 2.8, 2.2),
-        ("Ports", 1.5, 5.1),
-        ("Role", 4.5, 6.7),
-    ]):
-        add_textbox(slide, text, x, header_y + 0.05, width, 0.28,
-                    font_size=9, bold=True, color=C_MUTED)
-
-    for i, (svc, image, ports, role) in enumerate(services):
-        y = 2.15 + i * 0.5
-        bg = RGBColor(0x0F, 0x17, 0x2A) if i % 2 == 0 else RGBColor(0x17, 0x20, 0x33)
-        add_card(slide, 0.5, y, 12.33, 0.47, bg=bg)
-        add_highlight_bar(slide, 0.5, y, 0.04, 0.47, C_AMBER if i < 2 else C_GREEN)
-        add_textbox(slide, svc, 0.65, y + 0.07, 1.45, 0.33,
-                    font_size=9.5, bold=True, color=C_AMBER, font_name="Courier New")
-        add_textbox(slide, image, 2.2, y + 0.07, 2.8, 0.33,
-                    font_size=8.5, color=C_MUTED, font_name="Courier New")
-        add_textbox(slide, ports, 5.1, y + 0.07, 1.5, 0.33,
-                    font_size=9, color=C_GREEN, font_name="Courier New")
-        add_textbox(slide, role, 6.7, y + 0.07, 5.9, 0.33,
-                    font_size=9, color=C_WHITE)
-
-    # Healthchecks + volumes
-    add_card(slide, 0.5, 5.2, 5.9, 2.1)
-    add_textbox(slide, "Healthchecks", 0.7, 5.3, 5.5, 0.38,
-                font_size=12, bold=True, color=C_GREEN)
-    hc_lines = [
-        "kafka:    nc -z localhost 9092",
-        "api:      curl -f /api/health",
-        "dashboard: curl -f /",
-        "",
-        "interval: 10s  timeout: 5s  retries: 5",
-        "Dependences: ingester/processor dependent de kafka",
-    ]
-    for i, line in enumerate(hc_lines):
-        fn = "Courier New" if any(kw in line for kw in ["nc ", "curl", "interval"]) else "Calibri"
-        color = C_GREEN if line.startswith("kafka") or line.startswith("api") or line.startswith("dash") else C_MUTED
-        add_textbox(slide, line, 0.7, 5.78 + i * 0.25, 5.5, 0.25,
-                    font_size=9, color=color, font_name=fn)
-
-    add_card(slide, 6.65, 5.2, 6.18, 2.1)
-    add_textbox(slide, "Volumes et demarrage", 6.85, 5.3, 5.78, 0.38,
-                font_size=12, bold=True, color=C_AMBER)
-    vol_lines = [
-        "Volume: kafka_data (donnees Kafka persistees)",
-        "",
-        "Commandes:",
-        "  docker compose up -d     # demarrage",
-        "  docker compose logs -f   # logs live",
-        "  docker compose down -v   # reset complet",
-        "",
-        "Acces services apres demarrage:",
-        "  Dashboard:  http://localhost:8000",
-        "  API REST:   http://localhost:3000/api",
-        "  Kafka UI:   http://localhost:8080",
-    ]
-    for i, line in enumerate(vol_lines):
-        fn = "Courier New" if line.strip().startswith(("docker", "http", "kafka_data")) else "Calibri"
-        color = C_AMBER if line.strip().startswith("http") else (C_GREEN if "docker" in line else C_WHITE)
-        add_textbox(slide, line, 6.85, 5.78 + i * 0.25, 5.78, 0.25,
-                    font_size=9, color=color, font_name=fn)
-
-    add_footer(slide, 11)
-
-
-def slide_12_conclusion(prs):
-    """Slide 12: Conclusion et bilan."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, C_DARK)
-    add_highlight_bar(slide, 0, 0, 13.33, 0.08, C_AMBER)
-    add_highlight_bar(slide, 0, 0.08, 0.08, 7.42, C_PURPLE)
-    add_slide_title(slide, "Conclusion et Bilan")
-    add_highlight_bar(slide, 0.5, 1.1, 4.0, 0.04, C_AMBER)
-
-    # Accomplishments
-    add_card(slide, 0.5, 1.3, 5.8, 3.4, bg=RGBColor(0x0F, 0x17, 0x2A))
-    add_textbox(slide, "Ce qui a ete realise", 0.7, 1.4, 5.4, 0.4,
-                font_size=13, bold=True, color=C_GREEN)
-    done_items = [
-        "Pipeline complet: WebSocket -> Kafka -> Analytics -> Dashboard",
-        "Kafka KRaft sans Zookeeper (production-ready)",
-        "3 feeds WebSocket: Binance (x2 symboles) + Coinbase",
-        "3 indicateurs temps reel: VWAP, SMA-20, Z-score anomaly",
-        "Dashboard live avec Chart.js + alertes sonores",
-        "i18n FR/EN sans framework, persistance localStorage",
-        "Securite: helmet + rate-limit + Zod validation + CORS",
-        "Deploiement Docker Compose 6 services avec healthchecks",
-        "Realise par 2 personnes (projet prevu pour 4)",
-    ]
-    for i, item in enumerate(done_items):
-        add_textbox(slide, "OK  " + item, 0.7, 1.9 + i * 0.34, 5.4, 0.32,
-                    font_size=9.5, color=C_WHITE)
-
-    # Perspectives
-    add_card(slide, 6.65, 1.3, 6.18, 3.4, bg=RGBColor(0x0F, 0x17, 0x2A))
-    add_textbox(slide, "Perspectives et evolutions", 6.85, 1.4, 5.78, 0.4,
-                font_size=13, bold=True, color=C_PURPLE)
-    future_items = [
-        "Persistance: TimescaleDB ou InfluxDB pour historique long terme",
-        "Alertes: notifications Telegram/email sur anomalie",
-        "Machine Learning: prediction de tendance (LSTM, Prophet)",
-        "Broker secondaire: Kraken ou OKX pour diversite",
-        "Auth utilisateur: JWT + gestion de portefeuilles",
-        "Backtest: replay de donnees historiques sur le pipeline",
-        "CI/CD: GitHub Actions + tests automatises E2E",
-        "Monitoring: Prometheus + Grafana pour metriques infra",
-    ]
-    for i, item in enumerate(future_items):
-        add_textbox(slide, "+  " + item, 6.85, 1.9 + i * 0.34, 5.78, 0.32,
-                    font_size=9.5, color=C_MUTED)
-
-    # Skills acquired
-    add_card(slide, 0.5, 4.85, 12.33, 1.9, bg=RGBColor(0x0F, 0x17, 0x2A))
-    add_textbox(slide, "Competences acquises", 0.7, 4.95, 11.9, 0.4,
-                font_size=12, bold=True, color=C_AMBER)
-    skills = [
-        "Apache Kafka KRaft",
-        "WebSocket haute-freq.",
-        "Analytics temps reel",
-        "TypeScript strict",
-        "Docker Compose",
-        "Socket.IO push",
-        "Securite API",
-        "i18n vanilla JS",
-    ]
-    sk_w = 12.33 / len(skills) - 0.1
-    for i, sk in enumerate(skills):
-        x = 0.6 + i * (sk_w + 0.1)
-        add_card(slide, x, 5.4, sk_w, 0.75, bg=RGBColor(0x1E, 0x29, 0x3B))
-        add_textbox(slide, sk, x, 5.4, sk_w, 0.75,
-                    font_size=8.5, bold=True, color=C_AMBER, align=PP_ALIGN.CENTER)
-
-    add_textbox(slide, "Adam Beloucif  -  Emilien Morice  -  M1 Data Engineering & IA  -  EFREI Paris 2025-2026",
-                0.5, 6.9, 12.33, 0.3, font_size=9, color=C_MUTED, align=PP_ALIGN.CENTER)
-    add_highlight_bar(slide, 0.08, 7.42, 13.25, 0.08, C_AMBER)
-
-
-# ── Main ─────────────────────────────────────────────────────────────────────
-
-def main():
-    prs = Presentation()
-    prs.slide_width  = Inches(13.33)
-    prs.slide_height = Inches(7.5)
-
-    slide_01_title(prs)
-    slide_02_contexte(prs)
-    slide_03_architecture(prs)
-    slide_04_kafka(prs)
-    slide_05_ingester(prs)
-    slide_06_processor(prs)
-    slide_07_api(prs)
-    slide_08_dashboard(prs)
-    slide_09_securite(prs)
-    slide_10_i18n(prs)
-    slide_11_docker(prs)
-    slide_12_conclusion(prs)
-
-    out_dir = os.path.join(os.path.dirname(__file__))
-    out_path = os.path.join(out_dir, "crypto-market-monitor.pptx")
-    prs.save(out_path)
-    print(f"PPTX saved: {out_path}")
-    size = os.path.getsize(out_path)
-    print(f"File size: {size:,} bytes ({size / 1024:.1f} KB)")
-
-
-if __name__ == "__main__":
-    main()
+    run.text = text; run.font.size = Pt(size); run.font.bold = bold
+    run.font.color.rgb = color; run.font.italic = italic
+    return tb
+
+
+def progress_bar(slide, num, color=ROSE):
+    frac = num / TOTAL_SLIDES
+    w = 13.33 * frac
+    bar = slide.shapes.add_shape(1, Inches(0), Inches(7.44), Inches(13.33), Inches(0.06))
+    bar.fill.solid(); bar.fill.fore_color.rgb = RGBColor(0x16, 0x37, 0x67)
+    bar.line.fill.background()
+    bar2 = slide.shapes.add_shape(1, Inches(0), Inches(7.44), Inches(w), Inches(0.06))
+    bar2.fill.solid(); bar2.fill.fore_color.rgb = color
+    bar2.line.fill.background()
+
+
+def section_label(slide, label, color=ROSE):
+    txt(slide, label.upper(), 0.45, 0.2, 8, 0.35,
+        size=9, bold=True, color=color, align=PP_ALIGN.LEFT)
+
+
+def slide_num(slide, num, color=MUTED):
+    txt(slide, f"{num} / {TOTAL_SLIDES}", 12.5, 0.18, 0.8, 0.3,
+        size=9, color=color, align=PP_ALIGN.RIGHT)
+
+
+def headline(slide, text, l=0.5, t=0.7, w=12.3, h=2.0, size=44):
+    txt(slide, text, l, t, w, h, size=size, bold=True, color=WHITE)
+
+
+def add_logo(slide):
+    if os.path.exists(LOGO):
+        try:
+            slide.shapes.add_picture(LOGO, Inches(11.8), Inches(0.15), width=Inches(1.25))
+        except Exception:
+            pass
+
+
+def bullet(slide, items, l, t, w, size=13, color=WHITE, spacing=0.44):
+    for i, item in enumerate(items):
+        txt(slide, f"  {item}", l, t + i * spacing, w, spacing + 0.06,
+            size=size, color=color)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 1 — TITRE  (Big Statement)
+# ═══════════════════════════════════════════════════════════════════
+s1 = new_slide()
+# Gradient band left (EFREI rose)
+band = s1.shapes.add_shape(1, Inches(0), Inches(0), Inches(0.4), Inches(7.5))
+band.fill.solid(); band.fill.fore_color.rgb = ROSE; band.line.fill.background()
+# Top line accent
+top = s1.shapes.add_shape(1, Inches(0.4), Inches(0), Inches(12.93), Inches(0.06))
+top.fill.solid(); top.fill.fore_color.rgb = ROSE; top.line.fill.background()
+
+txt(s1, "CRYPTO MONITOR", 0.8, 0.8, 11.5, 1.5, size=56, bold=True, color=WHITE, align=PP_ALIGN.LEFT)
+txt(s1, "Surveillance temps reel des marches crypto", 0.8, 2.45, 10, 0.7,
+    size=22, color=MUTED, align=PP_ALIGN.LEFT)
+
+# Pink divider line
+div = s1.shapes.add_shape(1, Inches(0.8), Inches(3.3), Inches(3), Inches(0.05))
+div.fill.solid(); div.fill.fore_color.rgb = ROSE; div.line.fill.background()
+
+txt(s1, "Apache Kafka  -  Node.js  -  TypeScript  -  Socket.IO", 0.8, 3.5, 10, 0.5,
+    size=14, color=RGBColor(0xFF, 0x43, 0xB8), italic=True)
+
+# Author card
+rect(s1, 0.8, 4.5, 7.0, 1.8, DARK_CARD)
+txt(s1, "Adam Beloucif  &  Emilien Morice", 1.0, 4.65, 6.6, 0.55,
+    size=16, bold=True, color=WHITE)
+txt(s1, "M1 Data Engineering & IA  -  EFREI Paris", 1.0, 5.25, 6.6, 0.45,
+    size=12, color=ROSE)
+txt(s1, "Module Real-Time Engineering  -  2025-2026", 1.0, 5.68, 6.6, 0.38,
+    size=11, color=MUTED)
+
+add_logo(s1)
+progress_bar(s1, 1)
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 2 — CONTEXTE  (Full statement + metrics boxes)
+# ═══════════════════════════════════════════════════════════════════
+s2 = new_slide()
+section_label(s2, "contexte & problematique", SEC["intro"])
+slide_num(s2, 2, SEC["intro"])
+add_logo(s2)
+
+headline(s2, "Pourquoi surveiller\nles marches en temps reel ?", t=0.5, size=36)
+
+# 3 metric boxes
+metrics = [("100M+", "transactions/jour\nBinance"), ("< 1s", "latence cible\ndetection"), ("3", "sources\nBinance + Coinbase")]
+for i, (val, label) in enumerate(metrics):
+    x = 0.5 + i * 4.3
+    rect(s2, x, 3.55, 3.8, 1.8, CARD)
+    div2 = s2.shapes.add_shape(1, Inches(x), Inches(3.55), Inches(3.8), Inches(0.06))
+    div2.fill.solid(); div2.fill.fore_color.rgb = ROSE; div2.line.fill.background()
+    txt(s2, val,   x+0.15, 3.65, 3.5, 0.75, size=30, bold=True, color=ROSE)
+    txt(s2, label, x+0.15, 4.38, 3.5, 0.85, size=12, color=MUTED)
+
+txt(s2, "Kafka decouples ingestion from processing - N consumers, zero data loss",
+    0.5, 5.65, 12.3, 0.45, size=12, color=MUTED, italic=True)
+progress_bar(s2, 2)
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 3 — ARCHITECTURE  (Split layout)
+# ═══════════════════════════════════════════════════════════════════
+s3 = new_slide()
+section_label(s3, "architecture", SEC["archi"])
+slide_num(s3, 3, SEC["archi"])
+add_logo(s3)
+
+headline(s3, "Pipeline\nKafka bout-en-bout", t=0.5, size=36)
+
+pipeline = [
+    ("WebSocket\nSources", PURPLE, "Binance + Coinbase"),
+    ("Ingester\nNode.js", SEC["archi"], "normalisation"),
+    ("Kafka\nKRaft 3.7", RGBColor(0x23,0x1F,0x20), "tampon"),
+    ("Processor\nVWAP / SMA", SEC["archi"], "analytics"),
+    ("API\nSocket.IO", ROSE, "live push"),
+]
+for i, (name, col, sub) in enumerate(pipeline):
+    x = 0.35 + i * 2.55
+    box = s3.shapes.add_shape(1, Inches(x), Inches(3.3), Inches(2.3), Inches(1.4))
+    box.fill.solid(); box.fill.fore_color.rgb = col; box.line.fill.background()
+    tf = box.text_frame; tf.text = name
+    for para in tf.paragraphs:
+        para.alignment = PP_ALIGN.CENTER
+        for run in para.runs:
+            run.font.size = Pt(11); run.font.bold = True
+            run.font.color.rgb = WHITE
+    txt(s3, sub, x, 4.82, 2.3, 0.3, size=9, color=MUTED, align=PP_ALIGN.CENTER)
+    if i < 4:
+        arr = s3.shapes.add_shape(1, Inches(x+2.32), Inches(3.9), Inches(0.2), Inches(0.2))
+        arr.fill.solid(); arr.fill.fore_color.rgb = MUTED; arr.line.fill.background()
+
+rect(s3, 0.35, 5.35, 12.6, 1.75, DARK_CARD)
+div3 = s3.shapes.add_shape(1, Inches(0.35), Inches(5.35), Inches(0.05), Inches(1.75))
+div3.fill.solid(); div3.fill.fore_color.rgb = SEC["archi"]; div3.line.fill.background()
+txt(s3, "Decoupling garanti", 0.6, 5.45, 12, 0.4, size=13, bold=True, color=WHITE)
+txt(s3, "Les producteurs et consommateurs fonctionnent a des debits independants. Partition par symbole (BTC-USDT, ETH-USDT, BTC-USD). Retention 1h, relecture possible en cas de crash.",
+    0.6, 5.88, 12.1, 1.1, size=11, color=MUTED)
+progress_bar(s3, 3, SEC["archi"])
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 4 — KAFKA KRaft  (Full statement + key points)
+# ═══════════════════════════════════════════════════════════════════
+s4 = new_slide()
+section_label(s4, "apache kafka", SEC["kafka"])
+slide_num(s4, 4, SEC["kafka"])
+add_logo(s4)
+
+headline(s4, "KRaft : Kafka\nsans Zookeeper", t=0.5, size=40)
+
+rect(s4, 0.5, 3.25, 5.7, 3.85, DARK_CARD)
+div4 = s4.shapes.add_shape(1, Inches(0.5), Inches(3.25), Inches(0.07), Inches(3.85))
+div4.fill.solid(); div4.fill.fore_color.rgb = SEC["kafka"]; div4.line.fill.background()
+txt(s4, "Kafka 3.7 gere ses metadonnees via Raft\ninterne - 1 seul conteneur, 0 Zookeeper.",
+    0.7, 3.35, 5.3, 1.0, size=13, color=WHITE)
+txt(s4, "bitnami/kafka:3.7  (KRaft pre-configure)", 0.7, 4.4, 5.3, 0.4, size=11,
+    color=SEC["kafka"], italic=True)
+bullet(s4, [
+    "Producteurs ecrivent a la vitesse du marche",
+    "Consommateurs lisent a leur propre rythme",
+    "Partition par symbole, ordre garanti",
+    "Retention 1h - relecture en cas de crash",
+], 0.7, 4.9, 5.2, size=12, spacing=0.46)
+
+rect(s4, 6.8, 3.25, 6.1, 3.85, DARK_CARD)
+div4b = s4.shapes.add_shape(1, Inches(6.8), Inches(3.25), Inches(0.07), Inches(3.85))
+div4b.fill.solid(); div4b.fill.fore_color.rgb = BLUE; div4b.line.fill.background()
+txt(s4, "Topics", 7.0, 3.35, 5.7, 0.4, size=14, bold=True, color=WHITE)
+topics = [("crypto-trades", "Transactions brutes normalisees", "3 partitions, 1h"),
+          ("crypto-metrics","Metriques calculees (VWAP...)", "3 partitions, 1h")]
+for i, (topic, desc, conf) in enumerate(topics):
+    y = 3.9 + i * 1.4
+    rect(s4, 7.0, y, 5.7, 1.2, CARD)
+    txt(s4, topic, 7.15, y+0.1, 5.3, 0.4, size=12, bold=True, color=SEC["kafka"])
+    txt(s4, desc,  7.15, y+0.52, 5.3, 0.38, size=11, color=WHITE)
+    txt(s4, conf,  7.15, y+0.86, 5.3, 0.28, size=9, color=MUTED, italic=True)
+progress_bar(s4, 4, SEC["kafka"])
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 5 — INGESTER  (Split)
+# ═══════════════════════════════════════════════════════════════════
+s5 = new_slide()
+section_label(s5, "service ingester", SEC["svc"])
+slide_num(s5, 5, SEC["svc"])
+add_logo(s5)
+
+headline(s5, "Collecte\ndes flux WebSocket", t=0.5, size=36)
+
+rect(s5, 0.4, 3.2, 5.9, 3.9, DARK_CARD)
+div5 = s5.shapes.add_shape(1, Inches(0.4), Inches(3.2), Inches(0.07), Inches(3.9))
+div5.fill.solid(); div5.fill.fore_color.rgb = SEC["svc"]; div5.line.fill.background()
+txt(s5, "Sources", 0.65, 3.3, 5.5, 0.4, size=13, bold=True, color=WHITE)
+bullet(s5, [
+    "Binance : BTC/USDT + ETH/USDT (stream combine)",
+    "Coinbase : BTC-USD (Advanced Trade WS)",
+    "Interface Trade normalisee",
+    "Cle Kafka = symbole",
+], 0.65, 3.8, 5.5, size=12, spacing=0.46)
+txt(s5, "{ exchange, symbol, price, quantity,\n  timestamp, tradeId, side, value }",
+    0.7, 5.75, 5.5, 0.9, size=10, color=GREEN, italic=True)
+
+rect(s5, 6.9, 3.2, 6.1, 3.9, DARK_CARD)
+div5b = s5.shapes.add_shape(1, Inches(6.9), Inches(3.2), Inches(0.07), Inches(3.9))
+div5b.fill.solid(); div5b.fill.fore_color.rgb = ROSE; div5b.line.fill.background()
+txt(s5, "Resilience", 7.15, 3.3, 5.7, 0.4, size=13, bold=True, color=WHITE)
+bullet(s5, [
+    "Reconnexion auto - backoff exponentiel",
+    "Max 10 tentatives, delai max 30s",
+    "Heartbeat Coinbase gere",
+    "Arret propre SIGTERM/SIGINT",
+    "Vidage buffer Kafka avant arret",
+], 7.15, 3.8, 5.7, size=12, spacing=0.46)
+progress_bar(s5, 5, SEC["svc"])
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 6 — PROCESSOR  (Data/metrics layout)
+# ═══════════════════════════════════════════════════════════════════
+s6 = new_slide()
+section_label(s6, "service processor", SEC["svc"])
+slide_num(s6, 6, SEC["svc"])
+add_logo(s6)
+
+headline(s6, "Analytique\nen fenetre glissante", t=0.5, size=36)
+
+rows = [
+    ("VWAP",      "sum(prix x qte) / sum(qte)",  "1 min",    "Prix moyen pondere par volume"),
+    ("SMA-20",    "moyenne 20 derniers prix",     "20 trades","Tendance lissee"),
+    ("Z-Score",   "(val - mu) / sigma",           "1 min",    "Anomalie si > 2.5 sigma"),
+    ("Var. 1min", "(prix - prix0) / prix0",       "1 min",    "Performance instantanee"),
+    ("Var. 5min", "(prix - prix0) / prix0",       "5 min",    "Performance moyen terme"),
+    ("High/Low",  "max / min des prix",           "1 min",    "Amplitude de la bougie"),
+]
+# Header row
+rect(s6, 0.4, 3.2, 12.6, 0.42, CARD)
+for cx, lbl in [(0.55,"Metrique"), (2.9,"Formule"), (7.0,"Fenetre"), (8.8,"Objectif")]:
+    txt(s6, lbl, cx, 3.27, 3, 0.3, size=10, bold=True, color=ROSE)
+
+for i, (name, formula, window, desc) in enumerate(rows):
+    y = 3.65 + i * 0.55
+    bg = DARK_CARD if i%2==0 else CARD
+    rect(s6, 0.4, y, 12.6, 0.53, bg)
+    txt(s6, name,    0.55, y+0.09, 2.2, 0.35, size=12, bold=True, color=WHITE)
+    txt(s6, formula, 2.9,  y+0.09, 3.9, 0.35, size=10, color=GREEN)
+    txt(s6, window,  7.0,  y+0.09, 1.6, 0.35, size=11, color=ROSE)
+    txt(s6, desc,    8.8,  y+0.09, 4.0, 0.35, size=10, color=MUTED)
+
+txt(s6, "Buffer circulaire : max 1000 trades / symbole, eviction TTL 10 minutes",
+    0.55, 7.05, 12, 0.35, size=10, color=MUTED, italic=True)
+progress_bar(s6, 6, SEC["svc"])
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 7 — API  (Code slide style)
+# ═══════════════════════════════════════════════════════════════════
+s7 = new_slide()
+section_label(s7, "service api", SEC["svc"])
+slide_num(s7, 7, SEC["svc"])
+add_logo(s7)
+
+headline(s7, "Express + Socket.IO\nREST & Push temps reel", t=0.5, size=34)
+
+rect(s7, 0.4, 3.2, 5.9, 3.9, DARK_CARD)
+div7 = s7.shapes.add_shape(1, Inches(0.4), Inches(3.2), Inches(0.07), Inches(3.9))
+div7.fill.solid(); div7.fill.fore_color.rgb = SEC["svc"]; div7.line.fill.background()
+txt(s7, "REST endpoints", 0.65, 3.3, 5.5, 0.4, size=13, bold=True, color=WHITE)
+for i, ep in enumerate([
+    "GET /api/health",
+    "GET /api/metrics",
+    "GET /api/metrics/:symbol",
+    "GET /api/history/:symbol",
+    "GET /api/anomalies",
+]):
+    txt(s7, ep, 0.7, 3.85 + i*0.55, 5.4, 0.45, size=12, color=GREEN)
+
+rect(s7, 6.9, 3.2, 6.1, 3.9, DARK_CARD)
+div7b = s7.shapes.add_shape(1, Inches(6.9), Inches(3.2), Inches(0.07), Inches(3.9))
+div7b.fill.solid(); div7b.fill.fore_color.rgb = ROSE; div7b.line.fill.background()
+txt(s7, "Evenements Socket.IO (push)", 7.15, 3.3, 5.7, 0.4, size=13, bold=True, color=WHITE)
+for i, (ev, desc) in enumerate([
+    ("metrics:update",   "Metriques calculees"),
+    ("anomaly:detected", "Alerte z-score > seuil"),
+    ("server:stats",     "Stats connexions / msg/s"),
+    ("initial:state",    "Etat complet a la connexion"),
+    ("subscribe:symbol", "Choix de la paire"),
+]):
+    y = 3.85 + i*0.55
+    txt(s7, ev,   7.15, y, 3.0, 0.38, size=11, bold=True, color=ROSE)
+    txt(s7, desc, 10.2, y, 2.6, 0.38, size=11, color=MUTED)
+progress_bar(s7, 7, SEC["svc"])
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 8 — DASHBOARD  (Split)
+# ═══════════════════════════════════════════════════════════════════
+s8 = new_slide()
+section_label(s8, "dashboard", SEC["dash"])
+slide_num(s8, 8, SEC["dash"])
+add_logo(s8)
+
+headline(s8, "Interface\ntout-en-un live", t=0.5, size=40)
+
+rect(s8, 0.4, 3.2, 5.9, 3.9, DARK_CARD)
+div8 = s8.shapes.add_shape(1, Inches(0.4), Inches(3.2), Inches(0.07), Inches(3.9))
+div8.fill.solid(); div8.fill.fore_color.rgb = ROSE; div8.line.fill.background()
+txt(s8, "Composants", 0.65, 3.3, 5.5, 0.4, size=13, bold=True, color=WHITE)
+bullet(s8, [
+    "Prix hero - flash vert/rouge au changement",
+    "Badges variation 1min et 5min",
+    "4 stat-cards : Volume, Trades, High, Low",
+    "Chart.js : ligne prix + SMA-20 superposee",
+    "Barres volume par paire",
+    "Flux anomalies + beep AudioContext",
+], 0.65, 3.8, 5.5, size=12, spacing=0.44)
+
+rect(s8, 6.9, 3.2, 6.1, 3.9, DARK_CARD)
+div8b = s8.shapes.add_shape(1, Inches(6.9), Inches(3.2), Inches(0.07), Inches(3.9))
+div8b.fill.solid(); div8b.fill.fore_color.rgb = BLUE; div8b.line.fill.background()
+txt(s8, "Design & UX", 7.15, 3.3, 5.7, 0.4, size=13, bold=True, color=WHITE)
+bullet(s8, [
+    "Dark theme EFREI navy + rose #ff43b8",
+    "Logos SVG : Bitcoin, Ethereum, Coinbase",
+    "Barre gradient EFREI en haut de page",
+    "i18n FR/EN - bascule locale localStorage",
+    "Mode demo si backend inaccessible (3s)",
+    "Inter + JetBrains Mono, prefers-reduced-motion",
+], 7.15, 3.8, 5.7, size=12, spacing=0.44)
+progress_bar(s8, 8, SEC["dash"])
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 9 — SECURITE  (Full statement + list)
+# ═══════════════════════════════════════════════════════════════════
+s9 = new_slide()
+section_label(s9, "securite", SEC["secu"])
+slide_num(s9, 9, SEC["secu"])
+add_logo(s9)
+
+headline(s9, "Production-ready\ndepuis le jour 1", t=0.5, size=40)
+
+sec_items = [
+    ("helmet",             "HTTP headers de securite (CSP, HSTS, X-Frame, nosniff)"),
+    ("express-rate-limit", "100 req / 15min / IP - anti brute-force"),
+    ("zod",                "Validation stricte des variables d'environnement au demarrage"),
+    ("CORS strict",        "Whitelist explicite - pas de wildcard en production"),
+    ("Non-root Docker",    "Tous les conteneurs en appuser (UID 1000)"),
+    ("Secrets via env",    "Zero secret en dur - .env gitignored, .dockerignore complet"),
+]
+rect(s9, 0.4, 3.1, 12.6, 0.38, CARD)
+txt(s9, "Composant", 0.6, 3.18, 3.5, 0.28, size=10, bold=True, color=SEC["secu"])
+txt(s9, "Protection", 4.3, 3.18, 8.5, 0.28, size=10, bold=True, color=SEC["secu"])
+for i, (comp, desc) in enumerate(sec_items):
+    y = 3.52 + i*0.57
+    bg = DARK_CARD if i%2==0 else CARD
+    rect(s9, 0.4, y, 12.6, 0.54, bg)
+    txt(s9, comp, 0.6,  y+0.1, 3.5, 0.36, size=12, bold=True, color=WHITE)
+    txt(s9, desc, 4.3, y+0.1, 8.5, 0.36, size=11, color=MUTED)
+progress_bar(s9, 9, SEC["secu"])
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 10 — i18n  (Split)
+# ═══════════════════════════════════════════════════════════════════
+s10 = new_slide()
+section_label(s10, "internationalisation", SEC["i18n"])
+slide_num(s10, 10, SEC["i18n"])
+add_logo(s10)
+
+headline(s10, "i18n FR/EN\nvanilla JS, zero dep", t=0.5, size=38)
+
+rect(s10, 0.4, 3.2, 5.9, 3.9, DARK_CARD)
+div10 = s10.shapes.add_shape(1, Inches(0.4), Inches(3.2), Inches(0.07), Inches(3.9))
+div10.fill.solid(); div10.fill.fore_color.rgb = SEC["i18n"]; div10.line.fill.background()
+txt(s10, "Architecture", 0.65, 3.3, 5.5, 0.4, size=13, bold=True, color=WHITE)
+bullet(s10, [
+    "Module IIFE I18n - zero dependance",
+    "JSON async fetch depuis i18n/",
+    "Persistence localStorage (cmm-locale)",
+    "data-i18n sur tous les elements",
+    "Intl API pour formatage locale-aware",
+    "aria-pressed sur les boutons FR/EN",
+], 0.65, 3.8, 5.5, size=12, spacing=0.44)
+
+rect(s10, 6.9, 3.2, 6.1, 3.9, DARK_CARD)
+div10b = s10.shapes.add_shape(1, Inches(6.9), Inches(3.2), Inches(0.07), Inches(3.9))
+div10b.fill.solid(); div10b.fill.fore_color.rgb = GREEN; div10b.line.fill.background()
+txt(s10, "Exemple fr.json", 7.15, 3.3, 5.7, 0.4, size=13, bold=True, color=WHITE)
+txt(s10, '{\n  "title": "CRYPTO MONITOR",\n  "live": "EN DIRECT",\n  "connected": "Connecte",\n  "anomalies": {\n    "title": "Alertes anomalies",\n    "zscore": "Score Z"\n  },\n  "footer": {\n    "module": "Ingenierie Temps Reel"\n  }\n}',
+    7.15, 3.85, 5.7, 3.0, size=10, color=GREEN)
+progress_bar(s10, 10, SEC["i18n"])
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 11 — DEPLOIEMENT  (3 columns)
+# ═══════════════════════════════════════════════════════════════════
+s11 = new_slide()
+section_label(s11, "deploiement", SEC["deploy"])
+slide_num(s11, 11, SEC["deploy"])
+add_logo(s11)
+
+headline(s11, "3 options\nde deploiement", t=0.5, size=40)
+
+cols = [
+    ("01", "Lanceur\nautonomne",  ROSE,  "node launcher/src/index.mjs\n\nVerifie Docker, build, attend\nles healthchecks.\n\nCompile en .exe (pkg) :\nnpm run build:win"),
+    ("02", "Image\ntout-en-un",   BLUE,  "docker build \\\n  -f all-in-one.Dockerfile \\\n  -t crypto-monitor .\n\ndocker run -p 8080:8080\n  crypto-monitor"),
+    ("03", "Docker\nCompose",     PURPLE,"cp .env.example .env\ndocker-compose up -d\n\nDashboard  :8080\nKafka UI   :8090\nAPI        :3001"),
+]
+for i, (num, title, col, body_text) in enumerate(cols):
+    x = 0.35 + i*4.35
+    rect(s11, x, 3.15, 4.15, 4.0, DARK_CARD)
+    top_bar = s11.shapes.add_shape(1, Inches(x), Inches(3.15), Inches(4.15), Inches(0.07))
+    top_bar.fill.solid(); top_bar.fill.fore_color.rgb = col; top_bar.line.fill.background()
+    txt(s11, num,   x+0.18, 3.25, 3.8, 0.5, size=28, bold=True, color=col)
+    txt(s11, title, x+0.18, 3.8,  3.8, 0.65, size=14, bold=True, color=WHITE)
+    txt(s11, body_text, x+0.18, 4.55, 3.75, 2.5, size=10, color=MUTED)
+progress_bar(s11, 11, SEC["deploy"])
+
+# ═══════════════════════════════════════════════════════════════════
+# Slide 12 — BILAN  (Full statement + points)
+# ═══════════════════════════════════════════════════════════════════
+s12 = new_slide()
+section_label(s12, "bilan & perspectives", SEC["bilan"])
+slide_num(s12, 12, SEC["bilan"])
+add_logo(s12)
+
+headline(s12, "Realise a 2\npour une consigne de 4", t=0.5, size=38)
+
+rect(s12, 0.4, 3.2, 5.9, 3.9, DARK_CARD)
+div12 = s12.shapes.add_shape(1, Inches(0.4), Inches(3.2), Inches(0.07), Inches(3.9))
+div12.fill.solid(); div12.fill.fore_color.rgb = ROSE; div12.line.fill.background()
+txt(s12, "Livre", 0.65, 3.3, 5.5, 0.4, size=13, bold=True, color=WHITE)
+bullet(s12, [
+    "Pipeline Kafka bout-en-bout fonctionnel",
+    "3 services TypeScript production-ready",
+    "Dashboard EFREI-branded FR/EN + mode demo",
+    "Securite : helmet, rate-limit, zod, non-root",
+    "3 options deploiement dont .exe standalone",
+], 0.65, 3.8, 5.5, size=12, spacing=0.44)
+
+rect(s12, 6.9, 3.2, 6.1, 3.9, DARK_CARD)
+div12b = s12.shapes.add_shape(1, Inches(6.9), Inches(3.2), Inches(0.07), Inches(3.9))
+div12b.fill.solid(); div12b.fill.fore_color.rgb = BLUE; div12b.line.fill.background()
+txt(s12, "Evolutions possibles", 7.15, 3.3, 5.7, 0.4, size=13, bold=True, color=WHITE)
+bullet(s12, [
+    "SOL, BNB, XRP - nouvelles paires",
+    "Alertes email/SMS via Kafka Connect",
+    "InfluxDB / TimescaleDB pour historique",
+    "Kubernetes + Helm pour la scalabilite",
+    "Auth JWT REST + Socket.IO",
+], 7.15, 3.8, 5.7, size=12, spacing=0.44)
+
+progress_bar(s12, 12, ROSE)
+
+prs.save(OUT)
+print("PPTX v2 saved -> " + OUT)
+
