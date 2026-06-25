@@ -111,15 +111,17 @@ services:
         condition: service_healthy
     restart: on-failure
 
-  # ── Dashboard (nginx static) ──────────────────────────────────────────────
+  # ── Dashboard (React 18 + TypeScript + Vite, served by Node.js/Express) ──
   dashboard:
-    image: nginx:alpine
+    build:
+      context: ./dashboard-react
+      dockerfile: Dockerfile
     container_name: crypto-dashboard
     networks:
       - crypto-net
     ports:
-      - "${DASHBOARD_PORT:-8080}:80"
-    volumes:
-      - ./dashboard:/usr/share/nginx/html:ro
+      - "${DASHBOARD_PORT:-8080}:8080"
+    environment:
+      - VITE_API_URL=http://localhost:3001
     depends_on:
       - api
