@@ -28,8 +28,14 @@ Realise en binome dans le cadre du module **Real-Time Engineering** - M1 Data En
 Projet realise a **2 personnes** malgre une consigne prevue pour 4.
 
 ---
+## Auteurs
+
+**Adam Beloucif** ([@Adam-Blf](https://github.com/Adam-Blf)) · **Emilien Morice** ([@emilien754](https://github.com/emilien754))
+
+M1 Data Engineering & IA, EFREI Paris - Module Real-Time Engineering (2025-2026)
 
 ## Architecture
+---
 
 ```mermaid
 graph LR
@@ -211,11 +217,3 @@ Voir `.env.example` pour la liste complete. Variables cles :
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Adam-Blf/crypto-market-monitor&type=Date)](https://star-history.com/#Adam-Blf/crypto-market-monitor&Date)
-
----
-
-## Auteurs
-
-**Adam Beloucif** ([@Adam-Blf](https://github.com/Adam-Blf)) · **Emilien Morice** ([@emilien754](https://github.com/emilien754))
-
-M1 Data Engineering & IA, EFREI Paris - Module Real-Time Engineering (2025-2026)
