@@ -1,0 +1,11 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sol-g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9945FF"/>
+      <stop offset="100%" style="stop-color:#14F195"/>
+    </linearGradient>
+  </defs>
+  <path d="M5 22.5h18.5l3.5-3H8.5L5 22.5z" fill="url(#sol-g)"/>
+  <path d="M5 16h18.5l3.5-3H8.5L5 16z" fill="url(#sol-g)"/>
+  <path d="M5 9.5h18.5l3.5-3H8.5L5 9.5z" fill="url(#sol-g)"/>
+</svg>
