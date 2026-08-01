@@ -216,6 +216,3 @@ Voir `.env.example` pour la liste complete. Variables cles :
 
 ---
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Adam-Blf/crypto-market-monitor&type=Date)](https://star-history.com/#Adam-Blf/crypto-market-monitor&Date)
