@@ -1,5 +1,7 @@
 # Crypto Market Monitor
 
+[![version](https://img.shields.io/badge/version-1.0.0-000091?style=flat-square)](https://github.com/Adam-Blf/crypto-market-monitor/releases)
+
 Surveillance temps reel des marches crypto - pipeline Kafka avec dashboard React live.
 
 <!-- adam-badges:start -->
