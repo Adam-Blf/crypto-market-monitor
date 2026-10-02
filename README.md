@@ -48,6 +48,21 @@ graph LR
     PROC -->|produce| K2[("Apache Kafka<br/>topic: crypto-metrics")]
     K2 -->|consume| API["API Server<br/>Express + Socket.IO"]
     API -->|REST + WebSocket| DASH["Dashboard React 18<br/>Vite + Chart.js + i18n"]
+
+    classDef c0 fill:#2563eb,stroke:#1e3a8a,stroke-width:2px,color:#ffffff
+    classDef c1 fill:#7c3aed,stroke:#4c1d95,stroke-width:2px,color:#ffffff
+    classDef c2 fill:#0891b2,stroke:#164e63,stroke-width:2px,color:#ffffff
+    classDef c3 fill:#16a34a,stroke:#14532d,stroke-width:2px,color:#ffffff
+    classDef c4 fill:#d97706,stroke:#78350f,stroke-width:2px,color:#ffffff
+    classDef c5 fill:#db2777,stroke:#831843,stroke-width:2px,color:#ffffff
+    classDef c6 fill:#dc2626,stroke:#7f1d1d,stroke-width:2px,color:#ffffff
+    class B,C c0
+    class ING c1
+    class K c2
+    class PROC c3
+    class K2 c4
+    class API c5
+    class DASH c6
 ```
 
 ### Description des composants
